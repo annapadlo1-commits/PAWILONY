@@ -31,18 +31,30 @@ function enterpriseSetup() {
     }
 
 
-    const formulaRepair = {
+    let formulaRepair = {
       changedCells: 0,
       backupSheetName: '',
       audit: formulaAuditBefore
     };
 
-    if (!formulaAuditBefore.safe) {
-      throw new Error(
-        'Enterprise Setup przerwany bez modyfikowania formuł. ' +
-        'Automatyczna naprawa jest wyłączona w wersji SAFE MODE. ' +
-        'Sprawdź raport w zakładce „' + CONFIG.SHEETS.FORMULA_AUDIT + '”.'
-      );
+    if (!formulaAuditBefore.operationallySafe) {
+      if (!formulaAuditBefore.repairableWithoutConflicts ||
+          !CONFIG.FORMULA_POLICY ||
+          CONFIG.FORMULA_POLICY.AUTOMATIC_REPAIR_ENABLED !== true) {
+        throw new Error(
+          'Enterprise Setup przerwany bez modyfikowania formuł. ' +
+          'Audyt nie pozwolił utworzyć bezpiecznego planu naprawy.'
+        );
+      }
+      formulaRepair = repairInventoryFormulas_({
+        sheet: getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY),
+        products: scanInventoryProducts_(),
+        audit: formulaAuditBefore,
+        createBackup: true,
+        failOnConflicts: true,
+        requireFullySafe: false,
+        source: 'enterpriseSetup-classified-plan'
+      });
     }
 
     repairDictionaryCategoriesFromInventory();
@@ -60,7 +72,9 @@ function enterpriseSetup() {
       repairedFormulaCells: formulaRepair.changedCells,
       formulaBackupSheet: formulaRepair.backupSheetName,
       formulasSafe: formulaRepair.audit && formulaRepair.audit.safe,
-      automaticFormulaRepairEnabled: false,
+      automaticFormulaRepairEnabled: Boolean(
+        CONFIG.FORMULA_POLICY && CONFIG.FORMULA_POLICY.AUTOMATIC_REPAIR_ENABLED
+      ),
       validationWarnings: validation.warnings.length,
       durationMs: Date.now() - startedAt
     };
@@ -82,7 +96,7 @@ function enterpriseSetup() {
     );
 
     spreadsheet.toast(
-      'PAWILONY v' + CONFIG.VERSION + ' gotowe.',
+      CONFIG.LOCATION.NAME + ' v' + CONFIG.VERSION + ' gotowe.',
       'Inventory PRO',
       8
     );

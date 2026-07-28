@@ -11,6 +11,7 @@ function startNewInventory() {
     showFinalReview();
     return;
   }
+  clearInventoryStatusColors_(sheet);
   startInventorySession_();
   appendApplicationEvent_('INVENTORY_STARTED','Rozpoczęto nową inwentaryzację',{});
   SpreadsheetApp.getActiveSpreadsheet().toast('Nowa inwentaryzacja jest aktywna.','Inventory PRO',6);
@@ -47,6 +48,7 @@ function clearCurrentInventory() {
   }
 
   const result = clearCurrentInventoryData_(sheet);
+  clearInventoryStatusColors_(sheet);
 
   logInfo(
     'InventoryLifecycle',

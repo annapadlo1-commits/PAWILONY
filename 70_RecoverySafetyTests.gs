@@ -20,20 +20,24 @@ function testRecoveryDictionaryContaminationGuard_() {
   return true;
 }
 
-function testFormulaRepairHardDisabled436_() {
-  let blocked = false;
-  let message = '';
-  try {
-    repairInventoryFormulas_({ source: 'test' });
-  } catch (error) {
-    blocked = true;
-    message = String(error && error.message || error);
+function testFormulaRepairClassifiedPlan514_() {
+  const repairSource = String(repairInventoryFormulas_);
+  const planSource = String(buildInventoryFormulaRepairPlan_);
+  const applySource = String(applyInventoryFormulaRepairPlan_);
+  if (planSource.indexOf('classification') < 0) {
+    throw new Error('Plan naprawy formuł nie zapisuje klasyfikacji każdej pozycji.');
   }
-  if (!blocked) {
-    throw new Error('Funkcja naprawy formuł nie została twardo zablokowana.');
+  if (
+    applySource.indexOf('validateInventoryFormulaRepairPlanTargets_') < 0 ||
+    applySource.indexOf('preflightInventoryFormulaRepairPlan_') < 0
+  ) {
+    throw new Error('Zapis formuł nie wykonuje walidacji kontraktu i kontroli preflight.');
   }
-  if (message.indexOf('wyłączona') < 0 || message.indexOf('żadnego zapisu') < 0) {
-    throw new Error('Blokada naprawy nie zwróciła jednoznacznego komunikatu bezpieczeństwa.');
+  if (
+    repairSource.indexOf('createFormulaRepairBackupSheet_') < 0 ||
+    repairSource.indexOf('hasBlockingConflicts') < 0
+  ) {
+    throw new Error('Naprawa formuł nie wymaga kopii bezpieczeństwa i klasyfikacji konfliktów.');
   }
   return true;
 }

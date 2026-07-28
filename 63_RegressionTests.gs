@@ -48,6 +48,8 @@ function runAllEnterpriseTests() {
     testGeminiLosslessPrompt500_,
     testMobileResolverAliases500_,
     testAudioProcessorTriggerDeduplication513_,
+    testAudioPipelineRecovery514_,
+    testInventoryStatusColorLifecycle514_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,
@@ -72,7 +74,7 @@ function runAllEnterpriseTests() {
     testDirectFinalSparseWriteGuard461_,
     testXlsxExportWithoutDriveApi4313_,
     testRecoveryDictionaryContaminationGuard_,
-    testFormulaRepairHardDisabled436_,
+    testFormulaRepairClassifiedPlan514_,
     testFormulaRepairSegments432_,
     testFormulaRepairConcurrency432_,
     testFormulaConflictClassification432_,
@@ -1381,12 +1383,17 @@ function testFormulaContractFailClosed511_() {
     'Niezgodny układ formuł musi zostać zatrzymany przed pierwszym zapisem.');
 
   let repairBlocked = false;
+  const kegFormulaColumns = getFormulaColumnsForProductType_(CONFIG.PRODUCT_TYPES.KEG);
+  const forbiddenColumn = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(function(column) {
+    return kegFormulaColumns.indexOf(column) === -1;
+  });
   try {
     validateInventoryFormulaRepairPlanTargets_([{
       type: CONFIG.PRODUCT_TYPES.KEG,
-      a1: 'E215',
-      column: 'E',
-      columnNumber: 5
+      a1: forbiddenColumn + '215',
+      column: forbiddenColumn,
+      columnNumber: inventoryColumnLetterToNumber_(forbiddenColumn),
+      classification: 'INVALID_FORMULA'
     }]);
   } catch (error) {
     repairBlocked = true;

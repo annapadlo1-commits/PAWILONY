@@ -14,7 +14,8 @@ const GEMINI_AUDIO_JOB_TTL_MS_ = 24 * 60 * 60 * 1000;
 const GEMINI_AUDIO_FOLDER_PROPERTY_ = 'INVENTORY_AUDIO_TEMP_FOLDER_ID';
 const GEMINI_AUDIO_MAX_ATTEMPTS_ = 5;
 const GEMINI_AUDIO_RETRY_BASE_MS_ = 15000;
-const GEMINI_AUDIO_PROCESSING_TIMEOUT_MS_ = 12 * 60 * 1000;
+const GEMINI_AUDIO_PROCESSING_TIMEOUT_MS_ = 5 * 60 * 1000;
+const GEMINI_AUDIO_JOB_DEADLINE_MS_ = 30 * 60 * 1000;
 const GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_ = 'INVENTORY_AUDIO_PROCESSOR_DUE_AT';
 const GEMINI_AUDIO_TRIGGER_HANDLER_ = 'processPendingInventoryAudioJobs_';
 
@@ -342,6 +343,14 @@ function processPendingInventoryAudioJobs_() {
       try { job = JSON.parse(all[key]); } catch (error) { continue; }
       if (!job || job.status !== 'QUEUED') continue;
       if (Number(job.nextAttemptAt || 0) > now) continue;
+      if (now - Number(job.createdAt || now) > GEMINI_AUDIO_JOB_DEADLINE_MS_) {
+        job.status = 'ERROR';
+        job.nextAttemptAt = 0;
+        job.updatedAt = Date.now();
+        job.error = 'Przekroczono 30-minutowy limit przetwarzania. Nagranie zachowano — użyj „Ponów”.';
+        saveInventoryAudioJob_(job);
+        continue;
+      }
       job.status = 'PROCESSING';
       job.updatedAt = Date.now();
       saveInventoryAudioJob_(job);
@@ -440,17 +449,13 @@ function scheduleInventoryAudioProcessor_(delayMs) {
     const properties = PropertiesService.getScriptProperties();
     const delay = Math.max(1000, Number(delayMs || 1000));
     const dueAt = Date.now() + delay;
-    const triggers = getInventoryAudioProcessorTriggers_();
-
-    // Stare wydania mogły pozostawić wiele jednorazowych wyzwalaczy.
-    // Zachowujemy najwyżej jeden, a resztę usuwamy przed próbą utworzenia.
-    if (triggers.length) {
-      triggers.slice(1).forEach(function(trigger) {
-        try { ScriptApp.deleteTrigger(trigger); } catch (error) { console.warn(String(error)); }
-      });
-      properties.setProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_, String(dueAt));
-      return true;
-    }
+    // Jednorazowego triggera nie da się przeplanować przez zmianę właściwości.
+    // Każde żądanie harmonogramu usuwa więc rzeczywisty stary trigger i tworzy
+    // nowy z aktualnym terminem. To zamyka pętlę pozostawioną przez starsze wydanie.
+    getInventoryAudioProcessorTriggers_().forEach(function(trigger) {
+      try { ScriptApp.deleteTrigger(trigger); } catch (error) { console.warn(String(error)); }
+    });
+    properties.deleteProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_);
 
     const trigger = ScriptApp.newTrigger(GEMINI_AUDIO_TRIGGER_HANDLER_)
       .timeBased()
@@ -501,6 +506,16 @@ function repairInventoryAudioProcessorTriggers() {
 
 function getInventoryAudioRecoveryDecision_(job, now) {
   const current = Object.assign({}, job || {});
+  if (
+    ['DONE', 'ERROR'].indexOf(current.status) === -1 &&
+    Number(now || Date.now()) - Number(current.createdAt || 0) > GEMINI_AUDIO_JOB_DEADLINE_MS_
+  ) {
+    current.status = 'ERROR';
+    current.updatedAt = Number(now || Date.now());
+    current.nextAttemptAt = 0;
+    current.error = 'Przekroczono 30-minutowy limit przetwarzania. Nagranie zachowano — użyj „Ponów”.';
+    return current;
+  }
   if (current.status !== 'PROCESSING' ||
       Number(now || Date.now()) - Number(current.updatedAt || current.createdAt || 0) < GEMINI_AUDIO_PROCESSING_TIMEOUT_MS_) {
     return current;

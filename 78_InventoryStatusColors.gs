@@ -55,3 +55,16 @@ function refreshInventoryStatusColors_(sheet) {
 function refreshInventoryStatusColors() {
   return refreshInventoryStatusColors_(getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY));
 }
+
+function clearInventoryStatusColors_(sheet) {
+  const inventory = sheet || getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+  if (!inventory) return {cleared: 0};
+  const cells = scanInventoryProducts_()
+    .map(function(product) { return Number(product.inventoryRow) || 0; })
+    .filter(Boolean)
+    .map(function(row) { return 'A' + row; });
+  if (cells.length) {
+    inventory.getRangeList(cells).setBackground(null).setFontColor(null);
+  }
+  return {cleared: cells.length};
+}

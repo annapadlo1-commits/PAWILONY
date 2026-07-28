@@ -266,7 +266,9 @@ function finalizeInventoryAndExport(options) {
 
     if (isCurrentInventory) {
       closeActiveInventorySession_(exportId);
-      clearCurrentInventoryData_(getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY));
+      const inventorySheet = getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+      clearCurrentInventoryData_(inventorySheet);
+      clearInventoryStatusColors_(inventorySheet);
       startInventorySession_();
       appendApplicationEvent_('INVENTORY_STARTED','Rozpoczęto nową inwentaryzację po zamknięciu poprzedniej',{previousExportId:exportId});
     }

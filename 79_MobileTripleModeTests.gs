@@ -46,8 +46,9 @@ function testAudioProcessorTriggerDeduplication513_() {
   );
   assertCondition_(
     scheduleSource.indexOf('getInventoryAudioProcessorTriggers_') >= 0 &&
-      scheduleSource.indexOf('triggers.slice(1)') >= 0,
-    'Harmonogram musi wykrywać i usuwać zdublowane wyzwalacze.'
+      scheduleSource.indexOf('ScriptApp.deleteTrigger') >= 0 &&
+      scheduleSource.indexOf('ScriptApp.newTrigger') >= 0,
+    'Harmonogram musi usuwać stary wyzwalacz i tworzyć rzeczywiście przeplanowany.'
   );
   assertCondition_(
     processorSource.indexOf('removeInventoryAudioProcessorTriggers_') >= 0,
@@ -57,6 +58,40 @@ function testAudioProcessorTriggerDeduplication513_() {
     processorSource.indexOf('nextProcessorDelay') >= 0,
     'Następny procesor musi być planowany dopiero po zwolnieniu blokady.'
   );
+}
+
+function testAudioPipelineRecovery514_() {
+  const queueSource = String(queueInventoryAudioJob);
+  const workerSource = String(processPendingInventoryAudioJobs_);
+  const recoverySource = String(getInventoryAudioRecoveryDecision_);
+  assertCondition_(
+    queueSource.indexOf('saveInventoryAudioJob_') >= 0 &&
+      queueSource.indexOf('scheduleInventoryAudioProcessor_(1000)') >= 0,
+    'Zapis nagrania musi utrwalić zadanie i natychmiast uruchomić kolejkę.'
+  );
+  assertCondition_(
+    workerSource.indexOf('transcribeInventoryAudio') >= 0 &&
+      workerSource.indexOf("job.status = 'DONE'") >= 0,
+    'Ścieżka kolejki musi prowadzić przez Gemini do gotowego transkryptu.'
+  );
+  assertCondition_(
+    workerSource.indexOf('GEMINI_AUDIO_JOB_DEADLINE_MS_') >= 0 &&
+      recoverySource.indexOf('GEMINI_AUDIO_JOB_DEADLINE_MS_') >= 0,
+    'Procesor i odzyskiwanie muszą egzekwować twardy limit czasu.'
+  );
+}
+
+function testInventoryStatusColorLifecycle514_() {
+  assertCondition_(String(saveImportItems).indexOf('refreshInventoryStatusColors_') >= 0,
+    'Import i ponowny import muszą odświeżać kolory.');
+  assertCondition_(String(clearCurrentInventory).indexOf('clearInventoryStatusColors_') >= 0,
+    'Czyszczenie musi usuwać kolory.');
+  assertCondition_(String(startNewInventory).indexOf('clearInventoryStatusColors_') >= 0,
+    'Nowa inwentaryzacja musi zaczynać się bez kolorów.');
+  assertCondition_(String(finalizeInventoryAndExport).indexOf('clearInventoryStatusColors_') >= 0,
+    'Zakończenie inwentaryzacji musi usuwać kolory.');
+  assertCondition_(String(auditInventoryFormulaCoverage_).indexOf('refreshInventoryStatusColors_') === -1,
+    'Audyt nie może kolorować arkusza.');
 }
 
 function testQuickInventoryRejectsEmptyList500_() {

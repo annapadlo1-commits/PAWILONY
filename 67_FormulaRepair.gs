@@ -13,9 +13,13 @@ function buildInventoryFormulaRepairPlan_(sheet, products, audit) {
   ).getValues();
   const byCell = {};
 
-  formulaAudit.missing
-    .concat(formulaAudit.flattened, formulaAudit.legacy, formulaAudit.invalid, formulaAudit.calculationErrors)
-    .forEach(issue => {
+  [
+    ['MISSING', formulaAudit.missing],
+    ['FLATTENED_SAFE', formulaAudit.flattened],
+    ['LEGACY_EQUIVALENT', formulaAudit.legacy],
+    ['INVALID_FORMULA', formulaAudit.invalid],
+    ['CALCULATION_ERROR', formulaAudit.calculationErrors]
+  ].forEach(group => group[1].forEach(issue => {
       if (byCell[issue.cell]) return;
       const rowValues = values[issue.row - 1] || [];
       const currentValue = rowValues[issue.columnNumber - 1];
@@ -31,8 +35,9 @@ function buildInventoryFormulaRepairPlan_(sheet, products, audit) {
         product: issue.product,
         category: issue.category,
         type: issue.type
+        ,classification: group[0]
       };
-    });
+    }));
 
   return Object.keys(byCell).map(key => byCell[key]).sort((left, right) =>
     left.columnNumber - right.columnNumber || left.row - right.row
@@ -121,6 +126,16 @@ function preflightInventoryFormulaRepairPlan_(sheet, plan) {
 
 function validateInventoryFormulaRepairPlanTargets_(plan) {
   (plan || []).forEach(change => {
+    const classifications = [
+      'MISSING', 'FLATTENED_SAFE', 'LEGACY_EQUIVALENT',
+      'INVALID_FORMULA', 'CALCULATION_ERROR'
+    ];
+    if (classifications.indexOf(String(change.classification || '')) === -1) {
+      throw new Error(
+        'Naprawę formuł przerwano bez zmian: pozycja ' +
+        (change.a1 || '?') + ' nie ma bezpiecznej klasyfikacji.'
+      );
+    }
     const type = String(change.type || '').trim().toUpperCase();
     const layout = getConfiguredInventoryLayout_(type);
     if (!layout) {
@@ -238,10 +253,6 @@ function formatFormulaConflictCells_(audit, limit) {
 }
 
 function repairInventoryFormulas_(options) {
-  throw new Error(
-    'Automatyczna naprawa formuł jest wyłączona w wersji 4.3.7 SAFE MODE. ' +
-    'Funkcja nie wykonała żadnego zapisu.'
-  );
   const settings = options || {};
   const lock = LockService.getDocumentLock();
   const startedAt = Date.now();

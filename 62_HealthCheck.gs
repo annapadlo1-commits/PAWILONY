@@ -23,7 +23,14 @@ function runEnterpriseHealthCheck() {
   score -= testReport.failed * 10;
   score = Math.max(0, Math.min(100, score));
 
-  const status = score >= 90 ? 'HEALTHY' : (score >= 70 ? 'WARNING' : 'CRITICAL');
+  const formulas = validation.formulaAudit || {};
+  const releaseGatePassed =
+    score === 100 &&
+    testReport.failed === 0 &&
+    validation.errors.length === 0 &&
+    Number(formulas.invalidFormulaCells || 0) === 0 &&
+    Number(formulas.errorFormulaCells || 0) === 0;
+  const status = releaseGatePassed ? 'HEALTHY' : (score >= 70 ? 'WARNING' : 'CRITICAL');
   const result = {
     version: CONFIG.VERSION,
     location: CONFIG.LOCATION.NAME,
@@ -42,6 +49,7 @@ function runEnterpriseHealthCheck() {
     formulas: validation.formulaAudit,
     catalog: catalogSummary,
     issues: issues,
+    releaseGatePassed: releaseGatePassed,
     durationMs: Date.now() - startedAt
   };
 
@@ -68,6 +76,8 @@ function runEnterpriseTestsSilently_() {
     testGeminiLosslessPrompt500_,
     testMobileResolverAliases500_,
     testAudioProcessorTriggerDeduplication513_,
+    testAudioPipelineRecovery514_,
+    testInventoryStatusColorLifecycle514_,
     testQuickInventoryRejectsEmptyList500_,
     testGeminiTransientRetry500_,
     testGeminiCompressedAudio510_,
@@ -88,7 +98,7 @@ function runEnterpriseTestsSilently_() {
     testMissingPackagingReview511_,
     testDirectFinalCoffeeException434_,
     testRecoveryDictionaryContaminationGuard_,
-    testFormulaRepairHardDisabled436_,
+    testFormulaRepairClassifiedPlan514_,
     testFormulaRepairConcurrency432_,
     testFormulaConflictClassification432_
   ];
@@ -107,6 +117,7 @@ function formatHealthCheck_(result) {
     'Lokal: ' + result.location + '\n' +
     'Status: ' + result.status + '\n' +
     'Application Health: ' + result.score + '%\n\n' +
+    'Bramka wydania: ' + (result.releaseGatePassed ? 'PASS' : 'FAIL') + '\n' +
     'Testy PASS: ' + result.tests.passed + '/' + result.tests.total + '\n' +
     'Błędy konfiguracji: ' + result.validation.errors + '\n' +
     'Ostrzeżenia: ' + result.validation.warnings + '\n';
