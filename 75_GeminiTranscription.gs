@@ -14,7 +14,7 @@ const GEMINI_AUDIO_JOB_TTL_MS_ = 24 * 60 * 60 * 1000;
 const GEMINI_AUDIO_FOLDER_PROPERTY_ = 'INVENTORY_AUDIO_TEMP_FOLDER_ID';
 const GEMINI_AUDIO_MAX_ATTEMPTS_ = 5;
 const GEMINI_AUDIO_RETRY_BASE_MS_ = 15000;
-const GEMINI_AUDIO_PROCESSING_TIMEOUT_MS_ = 5 * 60 * 1000;
+const GEMINI_AUDIO_PROCESSING_TIMEOUT_MS_ = 7 * 60 * 1000;
 const GEMINI_AUDIO_JOB_DEADLINE_MS_ = 30 * 60 * 1000;
 const GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_ = 'INVENTORY_AUDIO_PROCESSOR_DUE_AT';
 const GEMINI_AUDIO_TRIGGER_HANDLER_ = 'processPendingInventoryAudioJobs_';
@@ -105,10 +105,7 @@ function checkGeminiApiKey_(key) {
 
 function buildGeminiInventoryPrompt_() {
   const context = buildRuntimeContext_();
-  const catalog = (context.catalog || []).map(function(product) {
-    const aliases = (product.aliases || []).filter(Boolean).slice(0, 12);
-    return product.name + (aliases.length ? ' | warianty mowy: ' + aliases.join(', ') : '');
-  }).join('\n');
+  const catalog = buildCompactGeminiCatalog_(context.catalog || []);
   const locations = (CONFIG.LOCATION_AREAS || []).map(function(area) {
     return area.label + ' | warianty mowy: ' +
       [area.label].concat(area.aliases || []).filter(Boolean).join(', ');
@@ -130,6 +127,29 @@ function buildGeminiInventoryPrompt_() {
     'KATALOG PRODUKTÓW I WARIANTY MOWY (wyłącznie pomoc w pisowni):',
     catalog
   ].join('\n');
+}
+
+function buildCompactGeminiCatalog_(products) {
+  const list = (products || []).filter(function(product) {
+    return product && product.name;
+  });
+  const canonical = list.map(function(product) { return product.name; });
+  const aliasLines = [];
+  let aliasBudget = 16000;
+  list.forEach(function(product) {
+    if (aliasBudget <= 0) return;
+    const productKey = normalizeText(product.name);
+    const aliases = Array.from(new Set((product.aliases || []).filter(function(alias) {
+      return alias && normalizeText(alias) !== productKey;
+    }))).slice(0, 3);
+    if (!aliases.length) return;
+    const line = product.name + ' | warianty mowy: ' + aliases.join(', ');
+    if (line.length + 1 > aliasBudget) return;
+    aliasLines.push(line);
+    aliasBudget -= line.length + 1;
+  });
+  return canonical.join('\n') +
+    (aliasLines.length ? '\nNAJWAŻNIEJSZE WARIANTY MOWY:\n' + aliasLines.join('\n') : '');
 }
 
 function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {

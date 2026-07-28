@@ -24,6 +24,26 @@ function testGeminiLosslessPrompt500_() {
   });
 }
 
+function testGeminiCompactCatalog542_() {
+  const products = Array.from({ length: 600 }, function(_, index) {
+    return {
+      name: 'PRODUKT TESTOWY ' + index,
+      aliases: Array.from({ length: 20 }, function(__, aliasIndex) {
+        return 'bardzo długi wariant mowy produktu ' + index + ' alias ' + aliasIndex;
+      })
+    };
+  });
+  const catalog = buildCompactGeminiCatalog_(products);
+  if (catalog.length > 40000) {
+    throw new Error('Katalog Gemini jest zbyt duży: ' + catalog.length + ' znaków.');
+  }
+  products.forEach(function(product) {
+    if (catalog.indexOf(product.name) === -1) {
+      throw new Error('Kompaktowy katalog pominął nazwę kanoniczną: ' + product.name);
+    }
+  });
+}
+
 function testMobileResolverAliases500_() {
   const context = buildRuntimeContext_();
   const payload = buildProductResolverPayload_(context, '');

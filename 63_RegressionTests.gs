@@ -46,6 +46,7 @@ function runAllEnterpriseTests() {
     testAudioQueueWatchdog501_,
     testGeminiCompressedAudio510_,
     testGeminiLosslessPrompt500_,
+    testGeminiCompactCatalog542_,
     testMobileResolverAliases500_,
     testAudioProcessorTriggerDeduplication513_,
     testAudioPipelineRecovery514_,
