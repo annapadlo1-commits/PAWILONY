@@ -36,11 +36,15 @@ function getFinalReviewSources() {
 }
 
 function getFinalReviewData(sourceSheetName) {
-  const selectedSheet = resolveFinalReviewSheetName_(sourceSheetName);
-  const snapshot = buildFinalInventorySnapshot_(selectedSheet);
-  const activeCatalogCount = Number(
-    snapshot.diagnostics && snapshot.diagnostics.activeCatalogCount
-  ) || 0;
+  let diagnosticStage = 'wybór arkusza';
+  try {
+    const selectedSheet = resolveFinalReviewSheetName_(sourceSheetName);
+    diagnosticStage = 'budowanie raportu';
+    const snapshot = buildFinalInventorySnapshot_(selectedSheet);
+    diagnosticStage = 'kontrola katalogu';
+    const activeCatalogCount = Number(
+      snapshot.diagnostics && snapshot.diagnostics.activeCatalogCount
+    ) || 0;
   if (activeCatalogCount > 0 && (!snapshot.items || !snapshot.items.length)) {
     throw new Error(
       'BŁĄD KRYTYCZNY RAPORTU: aktywny katalog zawiera ' + activeCatalogCount +
@@ -48,31 +52,40 @@ function getFinalReviewData(sourceSheetName) {
       'Nie wolno kontynuować eksportu. Wdróż kompletną paczkę ' + CONFIG.VERSION + '.'
     );
   }
-  const session = ensureActiveInventorySession_();
-  const reviewItems = snapshot.items.map(item => {
-    const editableCells = buildEditableReviewCells_(item);
-    const copy = Object.assign({}, item);
-    copy.cells = editableCells;
-    return copy;
-  });
+    diagnosticStage = 'sesja inwentaryzacji';
+    const session = ensureActiveInventorySession_();
+    diagnosticStage = 'pola raportu';
+    const reviewItems = snapshot.items.map(item => {
+      const editableCells = buildEditableReviewCells_(item);
+      const copy = Object.assign({}, item);
+      copy.cells = editableCells;
+      return copy;
+    });
 
-  return {
-    version: CONFIG.VERSION,
-    releaseSignature: 'FINAL_REPORT_FAST_CATALOG_546',
-    diagnostics: snapshot.diagnostics,
-    sourceSheetName: selectedSheet,
-    isCurrentInventory: isConfiguredSheetName_(selectedSheet, CONFIG.SHEETS.INVENTORY),
-    sessionId: session.id,
-    startedAt: session.startedAt,
-    generatedAt: new Date().toISOString(),
-    summary: snapshot.summary,
-    items: reviewItems,
-    reviewCategories: buildFinalReviewCategoryGroups_(reviewItems),
-    warnings: snapshot.warnings,
-    validationIssues: snapshot.validationIssues,
-    newProducts: getNewProductsForSession_(session.startedAt),
-    duplicates: getDuplicateGroupsForSession_(session.startedAt)
-  };
+    diagnosticStage = 'dane dodatkowe';
+    return {
+      version: CONFIG.VERSION,
+      releaseSignature: 'FINAL_REPORT_VISIBLE_ERROR_547',
+      diagnostics: snapshot.diagnostics,
+      sourceSheetName: selectedSheet,
+      isCurrentInventory: isConfiguredSheetName_(selectedSheet, CONFIG.SHEETS.INVENTORY),
+      sessionId: session.id,
+      startedAt: session.startedAt,
+      generatedAt: new Date().toISOString(),
+      summary: snapshot.summary,
+      items: reviewItems,
+      reviewCategories: buildFinalReviewCategoryGroups_(reviewItems),
+      warnings: snapshot.warnings,
+      validationIssues: snapshot.validationIssues,
+      newProducts: getNewProductsForSession_(session.startedAt),
+      duplicates: getDuplicateGroupsForSession_(session.startedAt)
+    };
+  } catch (error) {
+    throw new Error(
+      'RAPORT 5.4.7 — etap „' + diagnosticStage + '”: ' +
+      (error && error.message ? error.message : String(error))
+    );
+  }
 }
 
 function validateFinalReviewCategoryConfirmations_(items, confirmedCategories) {

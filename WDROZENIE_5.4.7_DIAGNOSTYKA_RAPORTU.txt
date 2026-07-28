@@ -1,0 +1,18 @@
+INVENTORY PRO 5.4.7 — WIDOCZNA DIAGNOSTYKA RAPORTU
+
+Wydanie zachowuje optymalizacje 5.4.6 i naprawia ukrywanie błędu serwera.
+
+Po wdrożeniu:
+1. Zapisz projekt i ponownie otwórz arkusz.
+2. W nagłówku raportu sprawdź wersję 5.4.7.
+3. Otwórz raport końcowy.
+
+Możliwe wyniki:
+- raport ładuje się prawidłowo;
+- pojawia się czerwony komunikat zaczynający się od:
+  RAPORT 5.4.7 — etap „...”
+- po 30 sekundach pojawia się informacja, że serwer nadal pracuje.
+
+W przypadku czerwonego komunikatu należy przekazać jego pełną treść. Komunikat
+wskazuje dokładny etap awarii: wybór arkusza, budowanie raportu, kontrola
+katalogu, sesja inwentaryzacji, pola raportu albo dane dodatkowe.
