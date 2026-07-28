@@ -55,6 +55,7 @@ function runAllEnterpriseTests() {
     testAudioScheduleIdempotency520_,
     testAudioStatusReadOnly520_,
     testAudioImmediateKick520_,
+    testAudioParallelWorker521_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,

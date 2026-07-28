@@ -83,6 +83,7 @@ function runEnterpriseTestsSilently_() {
     testAudioScheduleIdempotency520_,
     testAudioStatusReadOnly520_,
     testAudioImmediateKick520_,
+    testAudioParallelWorker521_,
     testQuickInventoryRejectsEmptyList500_,
     testGeminiTransientRetry500_,
     testGeminiCompressedAudio510_,

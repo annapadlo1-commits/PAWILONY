@@ -178,6 +178,22 @@ function testAudioImmediateKick520_() {
   );
 }
 
+function testAudioParallelWorker521_() {
+  const source = String(processPendingInventoryAudioJobs_);
+  const releaseAt = source.indexOf('claimLock.releaseLock()');
+  const geminiAt = source.indexOf('transcribeInventoryAudio');
+  assertCondition_(
+    source.indexOf('processingToken') >= 0 &&
+      releaseAt >= 0 &&
+      geminiAt > releaseAt,
+    'Procesor musi zarezerwować jedno zadanie i zwolnić blokadę przed wywołaniem Gemini.'
+  );
+  assertCondition_(
+    source.indexOf('processed >= 3') === -1,
+    'Jedno wykonanie procesora nie może blokować kolejki seryjną obsługą kilku nagrań.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

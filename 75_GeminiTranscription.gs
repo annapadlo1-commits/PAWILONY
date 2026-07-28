@@ -326,9 +326,13 @@ function dismissInventoryAudioJob(id, token) {
 }
 
 function processPendingInventoryAudioJobs_() {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return;
-  let nextProcessorDelay = 0;
+  const workerToken = Utilities.getUuid();
+  let job = null;
+  const claimLock = LockService.getScriptLock();
+  if (!claimLock.tryLock(5000)) {
+    scheduleInventoryAudioProcessor_(2000);
+    return;
+  }
   try {
     const properties = PropertiesService.getScriptProperties();
     removeInventoryAudioProcessorTriggers_();
@@ -344,78 +348,92 @@ function processPendingInventoryAudioJobs_() {
       return Number(a.createdAt || 0) - Number(b.createdAt || 0);
     });
     const now = Date.now();
-    const workerStartedAt = Date.now();
-    let processed = 0;
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
-      const key = keys[keyIndex];
-      let job;
-      try { job = JSON.parse(all[key]); } catch (error) { continue; }
-      if (!job || job.status !== 'QUEUED') continue;
-      if (Number(job.nextAttemptAt || 0) > now) continue;
-      if (now - Number(job.createdAt || now) > GEMINI_AUDIO_JOB_DEADLINE_MS_) {
-        job.status = 'ERROR';
-        job.nextAttemptAt = 0;
-        job.updatedAt = Date.now();
-        job.error = 'Przekroczono 30-minutowy limit przetwarzania. Nagranie zachowano — użyj „Ponów”.';
-        saveInventoryAudioJob_(job);
+      let candidate;
+      try { candidate = JSON.parse(all[keys[keyIndex]]); } catch (error) { continue; }
+      if (!candidate || candidate.status !== 'QUEUED') continue;
+      if (Number(candidate.nextAttemptAt || 0) > now) continue;
+      if (now - Number(candidate.createdAt || now) > GEMINI_AUDIO_JOB_DEADLINE_MS_) {
+        candidate.status = 'ERROR';
+        candidate.nextAttemptAt = 0;
+        candidate.updatedAt = Date.now();
+        candidate.error = 'Przekroczono 30-minutowy limit przetwarzania. Nagranie zachowano — użyj „Ponów”.';
+        saveInventoryAudioJob_(candidate);
         continue;
       }
+      job = candidate;
       job.status = 'PROCESSING';
+      job.processingToken = workerToken;
       job.updatedAt = Date.now();
       saveInventoryAudioJob_(job);
-      try {
-        const audioFile = DriveApp.getFileById(job.fileId);
-        const result = transcribeInventoryAudio(
-          Utilities.base64Encode(audioFile.getBlob().getBytes()),
-          job.mimeType || audioFile.getBlob().getContentType(),
-          job.durationSeconds
-        );
-        const transcriptFile = getInventoryAudioTempFolder_().createFile(Utilities.newBlob(
-          result.transcript,
-          'text/plain',
-          'InventoryPRO-transcript-' + job.id + '.txt'
-        ));
-        job.transcriptFileId = transcriptFile.getId();
-        job.model = result.model || '';
-        job.status = 'DONE';
-        job.error = '';
-      } catch (error) {
-        const message = String(error && error.message || error).slice(0, 600);
-        job.attempts = Number(job.attempts || 0) + 1;
-        if (isTransientGeminiError_(message) && job.attempts < GEMINI_AUDIO_MAX_ATTEMPTS_) {
-          const delay = geminiAudioRetryDelayMs_(job.attempts);
-          job.status = 'QUEUED';
-          job.nextAttemptAt = Date.now() + delay;
-          job.error = 'Chwilowa niedostępność Gemini. Automatyczna próba ' +
-            (job.attempts + 1) + '/' + GEMINI_AUDIO_MAX_ATTEMPTS_ +
-            ' za około ' + Math.ceil(delay / 1000) + ' s. ' + message;
-        } else {
-          job.status = 'ERROR';
-          job.nextAttemptAt = 0;
-          job.error = message;
-        }
-      }
-      job.updatedAt = Date.now();
-      saveInventoryAudioJob_(job);
-      processed++;
-      // W jednym uruchomieniu obsłuż kilka krótkich plików, ale pozostaw
-      // bezpieczny zapas przed limitem czasu Apps Script.
-      if (processed >= 3 || Date.now() - workerStartedAt > 230000) break;
-    }
-    const pendingJobs = Object.keys(PropertiesService.getScriptProperties().getProperties()).map(function(key) {
-      if (key.indexOf(GEMINI_AUDIO_JOB_PREFIX_) !== 0) return null;
-      return loadInventoryAudioJob_(key.slice(GEMINI_AUDIO_JOB_PREFIX_.length));
-    }).filter(function(pending) {
-      return pending && pending.status === 'QUEUED';
-    });
-    if (pendingJobs.length) {
-      const earliest = pendingJobs.reduce(function(value, pending) {
-        return Math.min(value, Number(pending.nextAttemptAt || Date.now() + 1000));
-      }, Number.MAX_SAFE_INTEGER);
-      nextProcessorDelay = Math.max(1000, earliest - Date.now());
+      break;
     }
   } finally {
-    lock.releaseLock();
+    claimLock.releaseLock();
+  }
+
+  if (job) {
+    try {
+      const audioFile = DriveApp.getFileById(job.fileId);
+      const audioBlob = audioFile.getBlob();
+      const result = transcribeInventoryAudio(
+        Utilities.base64Encode(audioBlob.getBytes()),
+        job.mimeType || audioBlob.getContentType(),
+        job.durationSeconds
+      );
+      const transcriptFile = getInventoryAudioTempFolder_().createFile(Utilities.newBlob(
+        result.transcript,
+        'text/plain',
+        'InventoryPRO-transcript-' + job.id + '.txt'
+      ));
+      job.transcriptFileId = transcriptFile.getId();
+      job.model = result.model || '';
+      job.status = 'DONE';
+      job.error = '';
+      job.nextAttemptAt = 0;
+    } catch (error) {
+      const message = String(error && error.message || error).slice(0, 600);
+      job.attempts = Number(job.attempts || 0) + 1;
+      if (isTransientGeminiError_(message) && job.attempts < GEMINI_AUDIO_MAX_ATTEMPTS_) {
+        const delay = geminiAudioRetryDelayMs_(job.attempts);
+        job.status = 'QUEUED';
+        job.nextAttemptAt = Date.now() + delay;
+        job.error = 'Chwilowa niedostępność Gemini. Automatyczna próba ' +
+          (job.attempts + 1) + '/' + GEMINI_AUDIO_MAX_ATTEMPTS_ +
+          ' za około ' + Math.ceil(delay / 1000) + ' s. ' + message;
+      } else {
+        job.status = 'ERROR';
+        job.nextAttemptAt = 0;
+        job.error = message;
+      }
+    }
+    const finishLock = LockService.getScriptLock();
+    if (finishLock.tryLock(5000)) {
+      try {
+        const current = loadInventoryAudioJob_(job.id);
+        if (current && current.processingToken === workerToken) {
+          job.processingToken = '';
+          job.updatedAt = Date.now();
+          saveInventoryAudioJob_(job);
+        }
+      } finally {
+        finishLock.releaseLock();
+      }
+    }
+  }
+
+  let nextProcessorDelay = 0;
+  const pendingJobs = Object.keys(PropertiesService.getScriptProperties().getProperties()).map(function(key) {
+    if (key.indexOf(GEMINI_AUDIO_JOB_PREFIX_) !== 0) return null;
+    return loadInventoryAudioJob_(key.slice(GEMINI_AUDIO_JOB_PREFIX_.length));
+  }).filter(function(pending) {
+    return pending && pending.status === 'QUEUED';
+  });
+  if (pendingJobs.length) {
+    const earliest = pendingJobs.reduce(function(value, pending) {
+      return Math.min(value, Number(pending.nextAttemptAt || Date.now() + 1000));
+    }, Number.MAX_SAFE_INTEGER);
+    nextProcessorDelay = Math.max(1000, earliest - Date.now());
   }
   if (nextProcessorDelay) scheduleInventoryAudioProcessor_(nextProcessorDelay);
 }
@@ -560,6 +578,7 @@ function getInventoryAudioRecoveryDecision_(job, now) {
   current.attempts = Number(current.attempts || 0) + 1;
   current.updatedAt = Number(now || Date.now());
   current.nextAttemptAt = 0;
+  current.processingToken = '';
   if (current.attempts < GEMINI_AUDIO_MAX_ATTEMPTS_) {
     current.status = 'QUEUED';
     current.error = 'Poprzednia sesja przetwarzania została przerwana. Zadanie wznowiono automatycznie (' +
