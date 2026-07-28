@@ -5,16 +5,22 @@
 function isDirectFinalInventoryProduct_(product) {
   const name = normalizeText(product && product.name || product && product.product || '');
   return getDirectFinalProductDefinitions_().some(definition =>
-    normalizeText(definition && definition.name || '') === name
+    getDirectFinalProductNames_(definition).indexOf(name) >= 0
   );
 }
 
 function getDirectFinalInventoryColumn_(product) {
   const name = normalizeText(product && product.name || product && product.product || '');
   const definition = getDirectFinalProductDefinitions_().find(item =>
-    normalizeText(item && item.name || '') === name
+    getDirectFinalProductNames_(item).indexOf(name) >= 0
   );
   return normalizeColumnLetter_(definition && definition.column || '');
+}
+
+function getDirectFinalProductNames_(definition) {
+  return [definition && definition.name].concat(definition && definition.aliases || [])
+    .map(normalizeText)
+    .filter(Boolean);
 }
 
 function getDirectFinalProductDefinitions_() {

@@ -35,6 +35,7 @@ function rebuildProductConfiguration() {
 
     const backupSheetName = createDictionaryConfigurationBackup_();
     writeFullProductConfiguration_(scan.products);
+    ensureConfiguredDirectFinalAliases_(scan.products);
     invalidateProductCatalogCache_();
     ui.alert(
       'Configuration Builder',
@@ -71,6 +72,7 @@ function syncProductConfiguration() {
       return { success: true, added: 0 };
     }
     appendProductConfigurations_(newProducts);
+    ensureConfiguredDirectFinalAliases_(scan.products);
     invalidateProductCatalogCache_();
     ui.alert('Synchronizacja zakończona', 'Dodano nowych produktów: ' + newProducts.length, ui.ButtonSet.OK);
     return { success: true, added: newProducts.length, diagnostics: scan.diagnostics };
@@ -190,11 +192,14 @@ function scanInventoryProductsWithDiagnostics_() {
     const effectiveType = inferInventoryProductType_(
       currentType, currentCategory, productName, rowValues
     );
-    const columns = effectiveType === CONFIG.PRODUCT_TYPES.LOCATION
-      ? locationColumns
-      : effectiveType === CONFIG.PRODUCT_TYPES.KEG
-        ? kegColumns
-        : normalColumns;
+    const directFinalColumn = getDirectFinalInventoryColumn_({ name: productName });
+    const columns = directFinalColumn
+      ? { quantity: directFinalColumn, weight: '', warehouse: '', darkroom: '', fridges: '' }
+      : effectiveType === CONFIG.PRODUCT_TYPES.LOCATION
+        ? locationColumns
+        : effectiveType === CONFIG.PRODUCT_TYPES.KEG
+          ? kegColumns
+          : normalColumns;
 
     const mapping = validateProductColumnMapping_(
       effectiveType,
@@ -406,6 +411,28 @@ function getExistingConfigurationIndex_() {
   const index = {};
   loadProductConfigurations().forEach(product => { index[product.normalizedName] = true; });
   return index;
+}
+
+function ensureConfiguredDirectFinalAliases_(products) {
+  const definitions = getDirectFinalProductDefinitions_();
+  if (!definitions.length) return 0;
+  const catalog = Array.isArray(products) ? products : [];
+  const existing = loadAliases();
+  const rows = [];
+  definitions.forEach(definition => {
+    const names = getDirectFinalProductNames_(definition);
+    const product = catalog.find(item => names.indexOf(normalizeText(item && item.name || '')) >= 0);
+    if (!product) return;
+    names.forEach(alias => {
+      if (!alias || existing[alias]) return;
+      rows.push([alias, product.name]);
+      existing[alias] = product.name;
+    });
+  });
+  if (!rows.length) return 0;
+  const sheet = getDictionarySheet_();
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 2).setValues(rows);
+  return rows.length;
 }
 
 function findNextConfigurationRow_(sheet) {

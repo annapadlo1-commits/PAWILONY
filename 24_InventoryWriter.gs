@@ -4,7 +4,7 @@
  * konkretne komórki wejściowe. Kolumny formuł są chronione kontraktem typu.
  */
 
-function saveImportItems(items) {
+function saveImportItems(items, clientImportId) {
   const submission = prepareImportSubmission_(items);
   const activeItems = submission.items;
   const excludedCount = submission.excludedCount;
@@ -18,6 +18,15 @@ function saveImportItems(items) {
 
   try {
     lock.waitLock(30000);
+    const receiptKey = getClientImportReceiptKey_(clientImportId);
+    const existingReceipt = receiptKey
+      ? PropertiesService.getScriptProperties().getProperty(receiptKey)
+      : '';
+    if (existingReceipt) {
+      const receipt = JSON.parse(existingReceipt);
+      receipt.duplicateSubmission = true;
+      return receipt;
+    }
     const sheet = getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
     inventorySheet = sheet;
     if (!sheet) throw new Error('Nie znaleziono arkusza: ' + CONFIG.SHEETS.INVENTORY);
@@ -103,6 +112,7 @@ function saveImportItems(items) {
       changedCells: writePlan.length
     }, response.durationMs);
 
+    if (receiptKey) saveClientImportReceipt_(receiptKey, response);
     return response;
   } catch (error) {
     if (inventoryWritten && inventorySheet && writePlan.length) {
@@ -120,6 +130,25 @@ function saveImportItems(items) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function getClientImportReceiptKey_(clientImportId) {
+  const value = String(clientImportId || '').trim();
+  return /^[A-Za-z0-9_-]{8,100}$/.test(value) ? 'INVENTORY_IMPORT_RECEIPT_' + value : '';
+}
+
+function saveClientImportReceipt_(receiptKey, response) {
+  const receipt = {
+    success: true,
+    importId: response.importId,
+    savedCount: response.savedCount,
+    skippedCount: response.skippedCount,
+    excludedCount: response.excludedCount,
+    warningCount: response.warningCount,
+    duplicateSubmission: false,
+    savedAt: Date.now()
+  };
+  PropertiesService.getScriptProperties().setProperty(receiptKey, JSON.stringify(receipt));
 }
 
 function prepareImportSubmission_(items) {

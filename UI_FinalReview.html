@@ -9,7 +9,7 @@
     header{display:flex;align-items:center;gap:14px;padding:18px 22px;background:white;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
     .pizza{font-size:42px}.title h1{font-size:22px;margin:0}.title p{margin:4px 0 0;color:#666;font-size:13px}
     main{padding:18px 22px}.cards{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:16px}
-    .card{background:white;border:1px solid var(--line);border-radius:12px;padding:13px}.card b{font-size:24px;display:block;margin-top:5px}.card.warn b{color:#b06000}.card.bad b{color:#c5221f}
+    .card{background:white;border:1px solid var(--line);border-radius:12px;padding:13px;text-align:left;color:inherit;font-weight:400}.card b{font-size:24px;display:block;margin-top:5px}.card.warn b{color:#b06000}.card.bad b{color:#c5221f}.card.active{border:2px solid var(--tomato);box-shadow:0 0 0 2px rgba(139,30,63,.12)}
     .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:white;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
     input[type=search],textarea,select{border:1px solid #ccc;border-radius:8px;padding:9px;font:inherit}input[type=search]{min-width:280px}.spacer{flex:1}
     button{border:0;border-radius:9px;padding:10px 15px;font-weight:700;cursor:pointer}.primary{background:var(--tomato);color:white}.secondary{background:#f1f3f4}.green{background:var(--green);color:white}button:disabled{opacity:.55;cursor:not-allowed}
@@ -31,11 +31,11 @@
   <div id="loading" class="loading">Ładuję podsumowanie…</div>
   <div id="app" hidden>
     <section class="cards">
-      <div class="card">Produkty<b id="products">0</b></div>
-      <div class="card">Uzupełnione<b id="completed">0</b></div>
-      <div class="card bad">Brak wartości<b id="missing">0</b></div>
-      <div class="card warn">Ostrzeżenia<b id="warnings">0</b></div>
-      <div class="card">Nowe produkty<b id="newProducts">0</b></div>
+      <button type="button" class="card active" data-review-filter="all" onclick="setReviewFilter('all')">Produkty<b id="products">0</b></button>
+      <button type="button" class="card" data-review-filter="completed" onclick="setReviewFilter('completed')">Uzupełnione<b id="completed">0</b></button>
+      <button type="button" class="card bad" data-review-filter="missing" onclick="setReviewFilter('missing')">Brak wartości<b id="missing">0</b></button>
+      <button type="button" class="card warn" data-review-filter="warnings" onclick="setReviewFilter('warnings')">Ostrzeżenia<b id="warnings">0</b></button>
+      <button type="button" class="card" data-review-filter="new" onclick="setReviewFilter('new')">Nowe produkty<b id="newProducts">0</b></button>
     </section>
     <section class="toolbar"><label><b>Arkusz:</b> <select id="sourceSheet" onchange="changeSource()"></select></label>
       <input id="search" type="search" placeholder="Szukaj produktu lub kategorii…" oninput="renderRows()">
@@ -74,7 +74,7 @@
 <script>
 const CURRENT_INVENTORY_SHEET = <?!= JSON.stringify(CONFIG.SHEETS.INVENTORY) ?>;
 const LOCATION_REVIEW_ORDER = <?!= JSON.stringify(getLocationUiOptions_().map(function(item) { return item.label; })) ?>;
-let data=null; const edits={}; const confirmedCategories=new Set();
+let data=null; let reviewFilter='all'; const edits={}; const confirmedCategories=new Set();
 function formatValue(v){const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat('pl-PL',{maximumFractionDigits:3}).format(n):v;}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function load(){google.script.run.withSuccessHandler(setSources).withFailureHandler(showError).getFinalReviewSources();}
@@ -84,6 +84,9 @@ function changeSource(){Object.keys(edits).forEach(k=>delete edits[k]);document.
 function reloadData(){Object.keys(edits).forEach(k=>delete edits[k]);document.getElementById('loading').hidden=false;document.getElementById('app').hidden=true;loadSelected();}
 function setData(result){data=result;confirmedCategories.clear();document.getElementById('includePdf').checked=false;document.getElementById('loading').hidden=true;document.getElementById('app').hidden=false;document.getElementById('products').textContent=result.summary.products;document.getElementById('completed').textContent=result.summary.completed;document.getElementById('missing').textContent=result.summary.missing;document.getElementById('warnings').textContent=result.summary.warningProducts;document.getElementById('newProducts').textContent=result.newProducts.length;document.getElementById('saveCorrections').disabled=true;document.getElementById('saveCorrections').style.display=result.isCurrentInventory?'inline-block':'none';document.getElementById('editHint').classList.toggle('show',result.isCurrentInventory);updateExportButtonLabel();updateCategoryReviewButton();renderRows();const blocking=(result.validationIssues||[]).filter(x=>String(x.severity).toUpperCase()==='ERROR');if(blocking.length)showStatus('Wykryto błędy blokujące eksport: '+blocking.slice(0,3).map(x=>(x.product?x.product+' — ':'')+x.message).join('; '),'error');}
 function updateExportButtonLabel(){if(!data)return;const pdf=document.getElementById('includePdf').checked;document.getElementById('exportBtn').textContent=(data.isCurrentInventory?'Zakończ i eksportuj ':'Generuj ponownie ')+(pdf?'XLSX + PDF':'XLSX');}
+function setReviewFilter(filter){reviewFilter=filter||'all';document.querySelectorAll('[data-review-filter]').forEach(button=>button.classList.toggle('active',button.dataset.reviewFilter===reviewFilter));document.getElementById('onlyIssues').checked=reviewFilter==='missing'||reviewFilter==='warnings';renderRows();document.querySelector('.table-wrap').scrollIntoView({behavior:'smooth',block:'start'});}
+function isNewReviewItem(item){return (data.newProducts||[]).some(entry=>{const name=Array.isArray(entry)?entry[2]:(typeof entry==='string'?entry:(entry.name||entry.product||''));return String(name).toLowerCase()===String(item.product||'').toLowerCase();});}
+function matchesReviewFilter(item){if(reviewFilter==='completed')return !item.flags.length;if(reviewFilter==='missing')return item.flags.includes('BRAK WARTOŚCI');if(reviewFilter==='warnings')return item.flags.length>0&&!item.flags.includes('BRAK WARTOŚCI');if(reviewFilter==='new')return isNewReviewItem(item);return true;}
 function renderRows(){
   const q=document.getElementById('search').value.toLowerCase();
   const only=document.getElementById('onlyIssues').checked;
@@ -91,7 +94,7 @@ function renderRows(){
   tbody.innerHTML='';
   data.items.filter(x=>{
     const hit=(x.product+' '+x.category).toLowerCase().includes(q);
-    return hit&&(!only||x.flags.length);
+    return hit&&matchesReviewFilter(x)&&(!only||x.flags.length);
   }).forEach(item=>{
     const tr=document.createElement('tr');
     tr.className=item.flags.includes('BRAK WARTOŚCI')?'missing':(item.flags.length?'flagged':'');

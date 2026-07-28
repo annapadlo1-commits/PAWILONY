@@ -194,6 +194,33 @@ function testAudioParallelWorker521_() {
   );
 }
 
+function testDirectFinalAliases530_() {
+  getDirectFinalProductDefinitions_().forEach(function(definition) {
+    [definition.name].concat(definition.aliases || []).forEach(function(name) {
+      assertCondition_(
+        isDirectFinalInventoryProduct_({ name: name }) &&
+          getDirectFinalInventoryColumn_({ name: name }) === normalizeColumnLetter_(definition.column),
+        'Nazwa lub alias wyjątku finalnego musi zachować kontrakt jednej kolumny.'
+      );
+    });
+  });
+  const builderSource = String(scanInventoryProductsWithDiagnostics_);
+  assertCondition_(
+    builderSource.indexOf('directFinalColumn') >= 0,
+    'Odbudowa SŁOWNIKA musi wykrywać mapowanie wyjątku finalnego.'
+  );
+}
+
+function testMobileImportReceipt530_() {
+  const saveSource = String(saveImportItems);
+  assertCondition_(
+    saveSource.indexOf('getClientImportReceiptKey_') >= 0 &&
+      saveSource.indexOf('duplicateSubmission') >= 0 &&
+      String(saveClientImportReceipt_).indexOf('savedCount') >= 0,
+    'Ponowienie mobilnego importu musi zwracać zapisany dowód bez dublowania wartości.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

@@ -56,6 +56,8 @@ function runAllEnterpriseTests() {
     testAudioStatusReadOnly520_,
     testAudioImmediateKick520_,
     testAudioParallelWorker521_,
+    testDirectFinalAliases530_,
+    testMobileImportReceipt530_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,

@@ -7,7 +7,7 @@ const CONFIG = Object.freeze({
     NUMBER: 1,
     NEXT_LOCATION: 'KRUCZA'
   }),
-  VERSION: '5.2.1-AUDIO-PARALLEL-HOTFIX-PAWILONY',
+  VERSION: '5.3.0-SAFETY-UX-PAWILONY',
 
   SHEETS: Object.freeze({
     INVENTORY: 'INWENTURA',
@@ -55,7 +55,12 @@ const CONFIG = Object.freeze({
   }),
 
   DIRECT_FINAL_PRODUCTS: Object.freeze([
-    Object.freeze({ name: 'Czarna Fala Przelew 1 kg', column: 'B', unit: 'szt.' })
+    Object.freeze({
+      name: 'Czarna Fala Przelew',
+      aliases: Object.freeze(['Czarna Fala Przelew', 'Czarna Fala Przelew 1 kg']),
+      column: 'B',
+      unit: 'szt.'
+    })
   ]),
 
   // Jedno źródło prawdy dla fizycznego układu PAWILONÓW.
