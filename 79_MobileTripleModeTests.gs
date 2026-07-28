@@ -255,6 +255,7 @@ function testProductManagerBulkArchive540_() {
 function testUnknownTareGrossApproval543_() {
   const formulaSource = String(buildPackagingAwareOpenNetFormulaSpec_);
   const approvalSource = String(approveUnknownTareGrossAsNet);
+  const batchApprovalSource = String(approveUnknownTareGrossAsNetBatch);
   const reportSource = String(generateInventoryReport_);
   assertCondition_(
     formulaSource.indexOf('GROSS_AS_NET_APPROVED') >= 0 &&
@@ -266,6 +267,12 @@ function testUnknownTareGrossApproval543_() {
       approvalSource.indexOf('applyCanonicalFormulasToProductRow_') >= 0 &&
       approvalSource.indexOf('getDocumentLock') >= 0,
     'Decyzja o tarze musi walidować profil, blokować dokument i przeliczać formuły.'
+  );
+  assertCondition_(
+    batchApprovalSource.indexOf('TARE_UNKNOWN') >= 0 &&
+      batchApprovalSource.indexOf('applyCanonicalFormulasToProductRow_') >= 0 &&
+      batchApprovalSource.indexOf('UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_') >= 0,
+    'Zatwierdzenie kategorii musi zapisać i przeliczyć wszystkie zatwierdzone wagi brutto.'
   );
   assertCondition_(
     reportSource.indexOf('buildReportingCatalog_') >= 0 &&

@@ -372,7 +372,12 @@ function buildFinalReviewCategoryGroups_(items) {
       type: item.type,
       reason: item.reviewReason,
       finalTotal: item.finalTotal,
-      unit: item.unit
+      unit: item.unit,
+      canApproveGrossAsNet: Boolean(
+        item.packaging &&
+        item.packaging.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN &&
+        !item.grossAsNetApproved
+      )
     });
   });
   return Object.keys(groups).sort((a, b) => a.localeCompare(b, 'pl'))

@@ -161,6 +161,60 @@ function approveUnknownTareGrossAsNet(productKey, sourceSheetName) {
   }
 }
 
+function approveUnknownTareGrossAsNetBatch(productKeys, sourceSheetName) {
+  const selectedSheet = resolveFinalReviewSheetName_(sourceSheetName);
+  if (!isConfiguredSheetName_(selectedSheet, CONFIG.SHEETS.INVENTORY)) {
+    throw new Error('Decyzję o wadze brutto można zapisać tylko dla bieżącej inwentaryzacji.');
+  }
+  const requested = Array.from(new Set((productKeys || []).map(normalizeText).filter(Boolean)));
+  if (!requested.length) return {success: true, approved: 0, products: []};
+
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    SpreadsheetApp.flush();
+    const catalog = buildReportingCatalog_();
+    const byKey = {};
+    catalog.forEach(product => { byKey[product.normalizedName] = product; });
+    const sheet = getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+    const state = loadUnknownTareGrossApprovals_();
+    const approvedProducts = [];
+
+    requested.forEach(key => {
+      const product = byKey[key];
+      if (!product || !product.inventoryRow) {
+        throw new Error('Nie znaleziono produktu dla decyzji o wadze brutto: ' + key + '.');
+      }
+      const profile = getProductPackagingProfile_(product);
+      if (!profile || profile.mode !== CONFIG.PACKAGING_MODES.TARE_UNKNOWN) {
+        throw new Error('Produkt „' + product.name + '” nie ma profilu „tara nieznana”.');
+      }
+      const layout = getConfiguredInventoryLayout_(product.type);
+      const gross = sheet.getRange(layout.grossWeight + product.inventoryRow).getValue();
+      if (gross === '' || !Number.isFinite(Number(gross)) || Number(gross) < 0) {
+        throw new Error('Produkt „' + product.name + '” nie ma prawidłowej wagi brutto.');
+      }
+      state.products[key] = true;
+      approvedProducts.push(product);
+    });
+
+    PropertiesService.getDocumentProperties().setProperty(
+      UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_, JSON.stringify(state)
+    );
+    UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_ = state;
+    approvedProducts.forEach(product => applyCanonicalFormulasToProductRow_(sheet, product));
+    SpreadsheetApp.flush();
+    refreshInventoryStatusColors_(sheet);
+    return {
+      success: true,
+      approved: approvedProducts.length,
+      products: approvedProducts.map(product => product.name)
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function applyFinalReviewCorrections(corrections, sourceSheetName) {
   if (!Array.isArray(corrections) || !corrections.length) {
     return { success: true, updated: 0 };
