@@ -67,6 +67,7 @@ function runEnterpriseTestsSilently_() {
     testProductCatalog_,
     testGeminiLosslessPrompt500_,
     testMobileResolverAliases500_,
+    testAudioProcessorTriggerDeduplication513_,
     testQuickInventoryRejectsEmptyList500_,
     testGeminiTransientRetry500_,
     testGeminiCompressedAudio510_,

@@ -37,6 +37,28 @@ function testMobileResolverAliases500_() {
   });
 }
 
+function testAudioProcessorTriggerDeduplication513_() {
+  const scheduleSource = String(scheduleInventoryAudioProcessor_);
+  const processorSource = String(processPendingInventoryAudioJobs_);
+  assertCondition_(
+    scheduleSource.indexOf('LockService.getScriptLock') >= 0,
+    'Tworzenie wyzwalacza procesora audio musi być chronione blokadą.'
+  );
+  assertCondition_(
+    scheduleSource.indexOf('getInventoryAudioProcessorTriggers_') >= 0 &&
+      scheduleSource.indexOf('triggers.slice(1)') >= 0,
+    'Harmonogram musi wykrywać i usuwać zdublowane wyzwalacze.'
+  );
+  assertCondition_(
+    processorSource.indexOf('removeInventoryAudioProcessorTriggers_') >= 0,
+    'Procesor musi sprzątać uruchomiony i osierocone wyzwalacze.'
+  );
+  assertCondition_(
+    processorSource.indexOf('nextProcessorDelay') >= 0,
+    'Następny procesor musi być planowany dopiero po zwolnieniu blokady.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

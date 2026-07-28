@@ -26,7 +26,8 @@ function onOpen() {
     .addItem('Napraw / odśwież profile opakowań i formuły', 'migrateProductPackagingProfilesWithDialog')
     .addItem('Uporządkuj format liczb', 'normalizeInventoryNumberFormats')
     .addItem('Skonfiguruj transkrypcję Gemini', 'configureGeminiTranscription')
-    .addItem('Sprawdź transkrypcję Gemini', 'showGeminiTranscriptionStatus');
+    .addItem('Sprawdź transkrypcję Gemini', 'showGeminiTranscriptionStatus')
+    .addItem('Napraw kolejkę i wyzwalacze audio', 'repairInventoryAudioProcessorTriggers');
 
   const maintenanceMenu = ui.createMenu('Konserwacja danych')
     .addItem('Wyczyść cache katalogu', 'clearProductCatalogCache')

@@ -16,6 +16,7 @@ const GEMINI_AUDIO_MAX_ATTEMPTS_ = 5;
 const GEMINI_AUDIO_RETRY_BASE_MS_ = 15000;
 const GEMINI_AUDIO_PROCESSING_TIMEOUT_MS_ = 12 * 60 * 1000;
 const GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_ = 'INVENTORY_AUDIO_PROCESSOR_DUE_AT';
+const GEMINI_AUDIO_TRIGGER_HANDLER_ = 'processPendingInventoryAudioJobs_';
 
 function isGeminiTranscriptionConfigured_() {
   return Boolean(getGeminiApiKey_());
@@ -317,8 +318,10 @@ function dismissInventoryAudioJob(id, token) {
 function processPendingInventoryAudioJobs_() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
+  let nextProcessorDelay = 0;
   try {
     const properties = PropertiesService.getScriptProperties();
+    removeInventoryAudioProcessorTriggers_();
     properties.deleteProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_);
     recoverStaleInventoryAudioJobs_();
     const all = properties.getProperties();
@@ -391,11 +394,12 @@ function processPendingInventoryAudioJobs_() {
       const earliest = pendingJobs.reduce(function(value, pending) {
         return Math.min(value, Number(pending.nextAttemptAt || Date.now() + 1000));
       }, Number.MAX_SAFE_INTEGER);
-      scheduleInventoryAudioProcessor_(Math.max(1000, earliest - Date.now()));
+      nextProcessorDelay = Math.max(1000, earliest - Date.now());
     }
   } finally {
     lock.releaseLock();
   }
+  if (nextProcessorDelay) scheduleInventoryAudioProcessor_(nextProcessorDelay);
 }
 
 function publicInventoryAudioJob_(job) {
@@ -430,17 +434,69 @@ function geminiAudioRetryDelayMs_(attempt) {
 }
 
 function scheduleInventoryAudioProcessor_(delayMs) {
-  const properties = PropertiesService.getScriptProperties();
-  const delay = Math.max(1000, Number(delayMs || 1000));
-  const now = Date.now();
-  const dueAt = now + delay;
-  const existingDueAt = Number(properties.getProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_) || 0);
-  if (existingDueAt > now && existingDueAt <= dueAt + 5000) return;
-  properties.setProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_, String(dueAt));
-  ScriptApp.newTrigger('processPendingInventoryAudioJobs_')
-    .timeBased()
-    .after(delay)
-    .create();
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return false;
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const delay = Math.max(1000, Number(delayMs || 1000));
+    const dueAt = Date.now() + delay;
+    const triggers = getInventoryAudioProcessorTriggers_();
+
+    // Stare wydania mogły pozostawić wiele jednorazowych wyzwalaczy.
+    // Zachowujemy najwyżej jeden, a resztę usuwamy przed próbą utworzenia.
+    if (triggers.length) {
+      triggers.slice(1).forEach(function(trigger) {
+        try { ScriptApp.deleteTrigger(trigger); } catch (error) { console.warn(String(error)); }
+      });
+      properties.setProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_, String(dueAt));
+      return true;
+    }
+
+    const trigger = ScriptApp.newTrigger(GEMINI_AUDIO_TRIGGER_HANDLER_)
+      .timeBased()
+      .after(delay)
+      .create();
+    properties.setProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_, String(dueAt));
+    return Boolean(trigger);
+  } catch (error) {
+    PropertiesService.getScriptProperties().deleteProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_);
+    throw error;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getInventoryAudioProcessorTriggers_() {
+  return ScriptApp.getProjectTriggers().filter(function(trigger) {
+    return trigger.getHandlerFunction() === GEMINI_AUDIO_TRIGGER_HANDLER_;
+  });
+}
+
+function removeInventoryAudioProcessorTriggers_() {
+  getInventoryAudioProcessorTriggers_().forEach(function(trigger) {
+    try { ScriptApp.deleteTrigger(trigger); } catch (error) { console.warn(String(error)); }
+  });
+  PropertiesService.getScriptProperties().deleteProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_);
+}
+
+/**
+ * Jednorazowa naprawa projektu po starszych wydaniach.
+ * Usuwa osierocone/zdublowane wyzwalacze i uruchamia kolejkę ponownie,
+ * tylko gdy faktycznie istnieją oczekujące nagrania.
+ */
+function repairInventoryAudioProcessorTriggers() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Procesor audio jest teraz zajęty. Spróbuj ponownie za chwilę.');
+  try {
+    removeInventoryAudioProcessorTriggers_();
+  } finally {
+    lock.releaseLock();
+  }
+  ensureInventoryAudioProcessorScheduled_();
+  return {
+    ok: true,
+    triggerCount: getInventoryAudioProcessorTriggers_().length
+  };
 }
 
 function getInventoryAudioRecoveryDecision_(job, now) {

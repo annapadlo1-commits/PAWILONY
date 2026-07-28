@@ -47,6 +47,7 @@ function runAllEnterpriseTests() {
     testGeminiCompressedAudio510_,
     testGeminiLosslessPrompt500_,
     testMobileResolverAliases500_,
+    testAudioProcessorTriggerDeduplication513_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,
