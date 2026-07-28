@@ -1,0 +1,19 @@
+INVENTORY PRO 5.4.6 — NAPRAWA RAPORTU KOŃCOWEGO
+
+Zakres:
+- wspólna naprawa dla KRUCZEJ i PAWILONÓW,
+- usunięcie setek powtarzanych odczytów sesji i właściwości dokumentu,
+- jeden odczyt decyzji „tara nieznana” na cały raport,
+- raportowy katalog bez niepotrzebnego ładowania tysięcy aliasów,
+- brak drugiego pełnego ładowania katalogu przez kontrolę bezpieczeństwa,
+- blokada pustego lub mieszanego wersjami raportu.
+
+Wdrożenie:
+1. Wgraj kompletną paczkę właściwego lokalu i nadpisz wszystkie pliki projektu.
+2. Zapisz projekt Apps Script.
+3. Zamknij arkusz i otwórz go ponownie.
+4. Otwórz raport końcowy.
+5. W nagłówku musi być widoczna wersja 5.4.6-FINAL-REPORT-FAST-CATALOG
+   właściwa dla KRUCZEJ albo PAWILONÓW.
+
+Nie używaj paczki 5.4.5 — zawierała dodatkowy kosztowny odczyt katalogu.

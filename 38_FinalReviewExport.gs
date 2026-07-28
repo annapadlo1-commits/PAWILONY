@@ -38,6 +38,16 @@ function getFinalReviewSources() {
 function getFinalReviewData(sourceSheetName) {
   const selectedSheet = resolveFinalReviewSheetName_(sourceSheetName);
   const snapshot = buildFinalInventorySnapshot_(selectedSheet);
+  const activeCatalogCount = Number(
+    snapshot.diagnostics && snapshot.diagnostics.activeCatalogCount
+  ) || 0;
+  if (activeCatalogCount > 0 && (!snapshot.items || !snapshot.items.length)) {
+    throw new Error(
+      'BŁĄD KRYTYCZNY RAPORTU: aktywny katalog zawiera ' + activeCatalogCount +
+      ' produktów, ale silnik raportu zwrócił 0 pozycji. ' +
+      'Nie wolno kontynuować eksportu. Wdróż kompletną paczkę ' + CONFIG.VERSION + '.'
+    );
+  }
   const session = ensureActiveInventorySession_();
   const reviewItems = snapshot.items.map(item => {
     const editableCells = buildEditableReviewCells_(item);
@@ -48,6 +58,8 @@ function getFinalReviewData(sourceSheetName) {
 
   return {
     version: CONFIG.VERSION,
+    releaseSignature: 'FINAL_REPORT_FAST_CATALOG_546',
+    diagnostics: snapshot.diagnostics,
     sourceSheetName: selectedSheet,
     isCurrentInventory: isConfiguredSheetName_(selectedSheet, CONFIG.SHEETS.INVENTORY),
     sessionId: session.id,
@@ -346,7 +358,8 @@ function buildFinalInventorySnapshot_(sourceSheetName) {
     summary: report.summary,
     validationIssues: report.validationIssues,
     statistics: report.statistics,
-    metadata: report.metadata
+    metadata: report.metadata,
+    diagnostics: report.diagnostics
   };
 }
 

@@ -26,8 +26,7 @@ function generateInventoryReport_(sourceSheetName) {
   const displayValues = sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
   const categoryByRow = buildStrictInventoryCategoryMapFromSheet_(sheet, displayValues);
   SpreadsheetApp.flush();
-  invalidateProductCatalogCache_();
-  const catalog = buildProductCatalogUncached_();
+  const catalog = buildReportingCatalog_();
   if (!catalog.length) {
     throw new Error(
       'Katalog raportowy jest pusty. Eksport został bezpiecznie zablokowany. ' +
@@ -139,7 +138,31 @@ function generateInventoryReport_(sourceSheetName) {
   });
   report.summary = buildReportingSummary_(items);
   report.statistics = buildInventoryStatistics_(items);
+  report.diagnostics = {
+    activeCatalogCount: catalog.length,
+    reportItemsCount: items.length,
+    sourceLastRow: lastRow
+  };
   return report;
+}
+
+/**
+ * Raport nie potrzebuje aliasów ani dopasowania głosowego. Czytanie ich tutaj
+ * podwajało koszt uruchomienia raportu w dużym SŁOWNIKU.
+ */
+function buildReportingCatalog_() {
+  const configurations = loadProductConfigurations();
+  const inventoryRows = buildInventoryRowIndex_();
+  return configurations.map(config => ({
+    name: config.name,
+    normalizedName: config.normalizedName,
+    type: config.type,
+    category: config.category,
+    columns: config.columns,
+    inventoryRow: inventoryRows[config.normalizedName] || null,
+    aliases: [],
+    active: config.active
+  }));
 }
 
 function resolveReportingCategory_(detectedCategory, configuredCategory) {

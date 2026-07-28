@@ -9,16 +9,21 @@ const PRODUCT_PACKAGING_HEADERS_ = [
 ];
 let PRODUCT_PACKAGING_RUNTIME_CACHE_ = null;
 const UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_ = 'INVENTORY_UNKNOWN_TARE_GROSS_APPROVALS';
+let UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_ = null;
 
 function loadUnknownTareGrossApprovals_() {
+  if (UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_) {
+    return UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_;
+  }
   const session = ensureActiveInventorySession_();
   const properties = PropertiesService.getDocumentProperties();
   let stored = {};
   try { stored = JSON.parse(properties.getProperty(UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_) || '{}'); }
   catch (error) { stored = {}; }
-  return stored.sessionId === session.id && stored.products
+  UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_ = stored.sessionId === session.id && stored.products
     ? stored
     : {sessionId: session.id, products: {}};
+  return UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_;
 }
 
 function isUnknownTareGrossApproved_(product) {
@@ -35,10 +40,12 @@ function saveUnknownTareGrossApproval_(product, approved) {
   PropertiesService.getDocumentProperties().setProperty(
     UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_, JSON.stringify(state)
   );
+  UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_ = state;
 }
 
 function clearUnknownTareGrossApprovals_() {
   PropertiesService.getDocumentProperties().deleteProperty(UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_);
+  UNKNOWN_TARE_GROSS_APPROVAL_RUNTIME_CACHE_ = null;
 }
 
 function getProductPackagingSheet_(createIfMissing) {
