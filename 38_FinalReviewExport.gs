@@ -88,6 +88,22 @@ function getFinalReviewData(sourceSheetName) {
   }
 }
 
+function getFinalReviewDataJson(sourceSheetName) {
+  try {
+    const payload = getFinalReviewData(sourceSheetName);
+    const json = JSON.stringify(payload);
+    if (!json || json === 'null') {
+      throw new Error('Serializacja raportu zwróciła pustą odpowiedź.');
+    }
+    return json;
+  } catch (error) {
+    throw new Error(
+      'RAPORT 5.4.9 — most JSON: ' +
+      (error && error.message ? error.message : String(error))
+    );
+  }
+}
+
 function validateFinalReviewCategoryConfirmations_(items, confirmedCategories) {
   const confirmed = {};
   (confirmedCategories || []).forEach(category => {

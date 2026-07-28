@@ -268,9 +268,9 @@ function testUnknownTareGrossApproval543_() {
     'Decyzja o tarze musi walidować profil, blokować dokument i przeliczać formuły.'
   );
   assertCondition_(
-    reportSource.indexOf('buildProductCatalogUncached_') >= 0 &&
+    reportSource.indexOf('buildReportingCatalog_') >= 0 &&
       reportSource.indexOf('Katalog raportowy jest pusty') >= 0,
-    'Raport końcowy musi ominąć stary cache i blokować pusty eksport.'
+    'Raport końcowy musi użyć lekkiego katalogu bez starego cache i blokować pusty eksport.'
   );
   assertCondition_(
     String(startInventorySession_).indexOf('clearUnknownTareGrossApprovals_') >= 0 &&
