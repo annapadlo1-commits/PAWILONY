@@ -94,6 +94,25 @@ function testInventoryStatusColorLifecycle514_() {
     'Audyt nie może kolorować arkusza.');
 }
 
+function testInventoryFinishClearsConfiguredInputs515_() {
+  const clearSource = String(clearCurrentInventoryData_);
+  const finishSource = String(finalizeInventoryAndExport);
+  assertCondition_(
+    clearSource.indexOf('getInputColumnsForProductType_') >= 0 &&
+      clearSource.indexOf('product.columns') === -1,
+    'Czyszczenie musi pobierać kolumny wejściowe z CONFIG, nie z cache produktu.'
+  );
+  assertCondition_(
+    clearSource.indexOf('residualCells') >= 0,
+    'Czyszczenie musi sprawdzić, czy po operacji nie pozostały dane.'
+  );
+  assertCondition_(
+    finishSource.indexOf('clearCurrentInventoryData_') <
+      finishSource.indexOf('closeActiveInventorySession_'),
+    'Sesję wolno zamknąć dopiero po potwierdzonym wyczyszczeniu danych.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

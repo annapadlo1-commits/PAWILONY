@@ -265,10 +265,10 @@ function finalizeInventoryAndExport(options) {
     });
 
     if (isCurrentInventory) {
-      closeActiveInventorySession_(exportId);
       const inventorySheet = getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
       clearCurrentInventoryData_(inventorySheet);
       clearInventoryStatusColors_(inventorySheet);
+      closeActiveInventorySession_(exportId);
       startInventorySession_();
       appendApplicationEvent_('INVENTORY_STARTED','Rozpoczęto nową inwentaryzację po zamknięciu poprzedniej',{previousExportId:exportId});
     }

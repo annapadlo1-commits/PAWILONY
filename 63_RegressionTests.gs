@@ -50,6 +50,7 @@ function runAllEnterpriseTests() {
     testAudioProcessorTriggerDeduplication513_,
     testAudioPipelineRecovery514_,
     testInventoryStatusColorLifecycle514_,
+    testInventoryFinishClearsConfiguredInputs515_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,

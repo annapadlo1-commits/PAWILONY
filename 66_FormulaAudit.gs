@@ -345,7 +345,7 @@ function buildInventoryFormulaAudit_(sheet, products) {
 
   return {
     safe: missing.length === 0 && flattened.length === 0 && conflicts.length === 0 &&
-      legacy.length === 0 && invalid.length === 0 && calculationErrors.length === 0,
+      invalid.length === 0 && calculationErrors.length === 0,
     operationallySafe: missing.length === 0 && flattened.length === 0 && conflicts.length === 0 &&
       invalid.length === 0 && calculationErrors.length === 0,
     repairableWithoutConflicts: conflicts.length === 0,
@@ -429,7 +429,7 @@ function formatInventoryFormulaAudit_(audit) {
   ];
 
   const sample = audit.conflicts.concat(
-    audit.missing, audit.flattened, audit.invalid, audit.calculationErrors, audit.legacy
+    audit.missing, audit.flattened, audit.invalid, audit.calculationErrors
   ).slice(0, 15);
   if (sample.length) {
     lines.push('', 'Przykładowe komórki:');

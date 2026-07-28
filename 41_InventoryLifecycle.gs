@@ -72,14 +72,14 @@ function clearCurrentInventoryData_(sheet) {
   products.forEach(product => {
     if (!product.inventoryRow) return;
 
-    const columns = product.columns || {};
     const type = String(product.type || '').trim().toUpperCase();
     const directFinal = getDirectFinalInventoryColumn_(product);
+    const configuredColumns = getInputColumnsForProductType_(type);
     const candidates = directFinal
       ? [directFinal]
       : type === CONFIG.PRODUCT_TYPES.LOCATION
-      ? [columns.warehouse, columns.darkroom, columns.fridges]
-      : [columns.weight, columns.quantity];
+      ? [configuredColumns.warehouse, configuredColumns.darkroom, configuredColumns.fridges]
+      : [configuredColumns.weight, configuredColumns.quantity];
 
     candidates.filter(Boolean).forEach(column => {
       const safeColumn = assertSafeInventoryTargetColumn_(product, column);
@@ -104,9 +104,21 @@ function clearCurrentInventoryData_(sheet) {
 
   SpreadsheetApp.flush();
 
+  const residualCells = prepared
+    .filter(item => item.range.getValue() !== '')
+    .map(item => item.a1);
+  if (residualCells.length) {
+    throw new Error(
+      'Nie uruchomiono nowej inwentaryzacji: po czyszczeniu pozostały dane w ' +
+      residualCells.slice(0, 12).join(', ') +
+      (residualCells.length > 12 ? ' oraz ' + (residualCells.length - 12) + ' kolejnych komórkach.' : '.')
+    );
+  }
+
   return {
     clearedCells: prepared.length,
-    clearedAddresses: prepared.map(item => item.a1)
+    clearedAddresses: prepared.map(item => item.a1),
+    residualCells: []
   };
 }
 
