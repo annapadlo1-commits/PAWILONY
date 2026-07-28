@@ -126,6 +126,58 @@ function testInventoryColorLiveRefresh516_() {
   );
 }
 
+function testAudioScheduleIdempotency520_() {
+  const keep = getInventoryAudioScheduleDecision_({
+    now: 100000,
+    requestedDueAt: 102000,
+    existingDueAt: 101000,
+    triggerCount: 1
+  });
+  const late = getInventoryAudioScheduleDecision_({
+    now: 100000,
+    requestedDueAt: 101000,
+    existingDueAt: 110000,
+    triggerCount: 1
+  });
+  const stale = getInventoryAudioScheduleDecision_({
+    now: 100000,
+    requestedDueAt: 101000,
+    existingDueAt: 60000,
+    triggerCount: 1
+  });
+  const missing = getInventoryAudioScheduleDecision_({
+    now: 100000,
+    requestedDueAt: 101000,
+    existingDueAt: 0,
+    triggerCount: 0
+  });
+  assertCondition_(keep.keepExisting === true,
+    'Prawidłowego wyzwalacza nie wolno przesuwać przy kolejnym odczycie.');
+  assertCondition_(late.keepExisting === false,
+    'Wyzwalacz późniejszy od żądanego terminu musi zostać przeplanowany.');
+  assertCondition_(stale.keepExisting === false && stale.stale === true,
+    'Nieaktualny wyzwalacz musi zostać zastąpiony.');
+  assertCondition_(missing.keepExisting === false,
+    'Brakujący wyzwalacz musi zostać utworzony.');
+}
+
+function testAudioStatusReadOnly520_() {
+  const source = String(getInventoryAudioJobs);
+  assertCondition_(
+    source.indexOf('ensureInventoryAudioProcessorScheduled_') === -1 &&
+      source.indexOf('scheduleInventoryAudioProcessor_') === -1,
+    'Odczyt statusu kolejki nie może tworzyć ani przeplanowywać wyzwalaczy.'
+  );
+}
+
+function testAudioImmediateKick520_() {
+  const source = String(kickInventoryAudioProcessorNow);
+  assertCondition_(
+    source.indexOf('processPendingInventoryAudioJobs_') >= 0,
+    'Interfejs musi mieć bezpośrednią ścieżkę uruchomienia procesora audio.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

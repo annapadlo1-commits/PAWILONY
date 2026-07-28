@@ -284,7 +284,6 @@ function queueInventoryAudioJob(base64Audio, mimeType, durationSeconds, original
 function getInventoryAudioJobs(requests) {
   cleanupExpiredInventoryAudioJobs_();
   recoverStaleInventoryAudioJobs_();
-  ensureInventoryAudioProcessorScheduled_();
   return (Array.isArray(requests) ? requests : []).map(function(request) {
     const job = loadInventoryAudioJob_(request && request.id);
     if (!job || job.token !== String(request && request.token || '')) {
@@ -292,6 +291,16 @@ function getInventoryAudioJobs(requests) {
     }
     return publicInventoryAudioJob_(job);
   });
+}
+
+/**
+ * Natychmiastowy start wywoływany po bezpiecznym zapisie z interfejsu.
+ * Jednorazowy trigger utworzony podczas kolejkowania pozostaje zabezpieczeniem
+ * na wypadek zamknięcia karty lub przerwania połączenia.
+ */
+function kickInventoryAudioProcessorNow() {
+  processPendingInventoryAudioJobs_();
+  return {ok: true};
 }
 
 function retryInventoryAudioJob(id, token) {
@@ -449,10 +458,25 @@ function scheduleInventoryAudioProcessor_(delayMs) {
     const properties = PropertiesService.getScriptProperties();
     const delay = Math.max(1000, Number(delayMs || 1000));
     const dueAt = Date.now() + delay;
-    // Jednorazowego triggera nie da się przeplanować przez zmianę właściwości.
-    // Każde żądanie harmonogramu usuwa więc rzeczywisty stary trigger i tworzy
-    // nowy z aktualnym terminem. To zamyka pętlę pozostawioną przez starsze wydanie.
-    getInventoryAudioProcessorTriggers_().forEach(function(trigger) {
+    const triggers = getInventoryAudioProcessorTriggers_();
+    const existingDueAt = Number(
+      properties.getProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_) || 0
+    );
+    const decision = getInventoryAudioScheduleDecision_({
+      now: Date.now(),
+      requestedDueAt: dueAt,
+      existingDueAt: existingDueAt,
+      triggerCount: triggers.length
+    });
+
+    if (decision.keepExisting) {
+      triggers.slice(1).forEach(function(trigger) {
+        try { ScriptApp.deleteTrigger(trigger); } catch (error) { console.warn(String(error)); }
+      });
+      return true;
+    }
+
+    triggers.forEach(function(trigger) {
       try { ScriptApp.deleteTrigger(trigger); } catch (error) { console.warn(String(error)); }
     });
     properties.deleteProperty(GEMINI_AUDIO_TRIGGER_DUE_PROPERTY_);
@@ -469,6 +493,19 @@ function scheduleInventoryAudioProcessor_(delayMs) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function getInventoryAudioScheduleDecision_(state) {
+  const data = state || {};
+  const now = Number(data.now || Date.now());
+  const requestedDueAt = Number(data.requestedDueAt || now + 1000);
+  const existingDueAt = Number(data.existingDueAt || 0);
+  const hasTrigger = Number(data.triggerCount || 0) > 0;
+  const stale = !existingDueAt || existingDueAt < now - 30000;
+  return {
+    keepExisting: hasTrigger && !stale && existingDueAt <= requestedDueAt + 1500,
+    stale: stale
+  };
 }
 
 function getInventoryAudioProcessorTriggers_() {
