@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= includeInventoryUiTheme_(); ?>
+  <?!= includeInventoryHelp_(); ?>
+  <style>
+    *{box-sizing:border-box}body{margin:0;overflow:hidden;background:#f7f5f3}.app{height:100vh;display:flex;flex-direction:column}.toolbar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--ip-border);background:#fff}.toolbar select,.toolbar input{padding:9px 11px;background:#fff}.toolbar input{min-width:300px}.spacer{flex:1}.toolbar button{padding:9px 14px;border:0;font-weight:800;cursor:pointer}.summary{padding:9px 18px;color:var(--ip-muted);font-size:12px}.table-wrap{flex:1;overflow:auto;margin:0 18px 18px;border:1px solid var(--ip-border);border-radius:13px;background:#fff}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}th{position:sticky;top:0;z-index:2;background:#faf4ee}.event{display:inline-block;padding:4px 8px;border-radius:999px;background:#f1f3f4;font-size:10px;font-weight:900}.event.EXPORT{background:#e6f4ea;color:#137333}.event.IMPORT{background:#e8f0fe;color:#174ea6}.event.INVENTORY_STARTED{background:#fff3e0;color:#9a5500}.muted{color:var(--ip-muted)}.links a{display:inline-block;margin:2px 7px 2px 0;color:#0b57d0;font-weight:700;text-decoration:none}.empty{padding:50px;text-align:center;color:var(--ip-muted)}.loading{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(247,245,243,.94)}.loading div{text-align:center}.loading .pizza{font-size:52px}@media(max-width:760px){.toolbar{flex-wrap:wrap}.toolbar input{min-width:200px;flex:1}.table-wrap{margin:0 8px 8px}}
+  </style>
+</head>
+<body data-help-view="history">
+  <div class="app">
+    <div class="ip-app-header"><div class="ip-app-logo pizza">🍕</div><div><div class="ip-app-title">Inventory PRO — historia zdarzeń</div><div class="ip-app-subtitle">Najważniejsze operacje bez szczegółów technicznych</div></div></div>
+    <div class="toolbar"><label>Typ: <select id="type" onchange="render()"><option value="">Wszystkie</option></select></label><input id="search" type="search" placeholder="Szukaj opisu, ID lub użytkownika…" oninput="render()"><span class="spacer"></span><button class="secondary" onclick="load()">Odśwież</button><button class="primary" onclick="google.script.host.close()">Zamknij</button></div>
+    <div id="summary" class="summary"></div>
+    <div class="table-wrap"><table><thead><tr><th>Data</th><th>Zdarzenie</th><th>Opis</th><th>Pozycje</th><th>Arkusz / archiwum</th><th>Pliki</th><th>ID / wersja</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </div>
+  <div id="loading" class="loading"><div><div class="pizza">🍕</div><strong>Ładuję historię…</strong></div></div>
+  <script>
+    let historyData={rows:[],types:[]};
+    const els={type:document.getElementById('type'),search:document.getElementById('search'),summary:document.getElementById('summary'),rows:document.getElementById('rows'),loading:document.getElementById('loading')};
+    function load(){els.loading.style.display='flex';google.script.run.withSuccessHandler(setData).withFailureHandler(showError).getApplicationHistoryData();}
+    function setData(data){historyData=data||{rows:[],types:[]};els.type.innerHTML='<option value="">Wszystkie</option>'+historyData.types.map(value=>'<option value="'+esc(value)+'">'+esc(eventLabel(value))+'</option>').join('');els.loading.style.display='none';render();}
+    function render(){const selected=els.type.value;const query=els.search.value.trim().toLowerCase();const filtered=historyData.rows.filter(row=>(!selected||row.type===selected)&&(!query||[row.description,row.id,row.user,row.source].join(' ').toLowerCase().includes(query)));els.summary.textContent='Wyświetlono '+filtered.length+' z '+historyData.rows.length+' zdarzeń';els.rows.innerHTML=filtered.length?filtered.map(row=>'<tr><td><b>'+esc(row.timestamp)+'</b><br><span class="muted">'+esc(row.user)+'</span></td><td><span class="event '+safeClass(row.type)+'">'+esc(eventLabel(row.type))+'</span></td><td>'+esc(row.description)+'</td><td>'+esc(row.itemsCount||'—')+'</td><td>'+esc(row.source||'—')+'</td><td class="links">'+link(row.xlsxUrl,'XLSX')+link(row.pdfUrl,'PDF')+(row.xlsxUrl||row.pdfUrl?'':'—')+'</td><td><b>'+esc(row.id||'—')+'</b><br><span class="muted">v'+esc(row.version||'—')+'</span></td></tr>').join(''):'<tr><td colspan="7"><div class="empty">Brak zdarzeń pasujących do filtrów.</div></td></tr>';}
+    function eventLabel(value){return ({IMPORT:'Import',EXPORT:'Eksport',INVENTORY_STARTED:'Rozpoczęcie inwentaryzacji'})[value]||value||'Inne';}
+    function link(url,label){return /^https:\/\//i.test(url||'')?'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+label+' ↗</a>':'';}
+    function safeClass(value){return String(value||'').replace(/[^A-Z_]/g,'');}
+    function esc(value){return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
+    function showError(error){els.loading.style.display='none';historyData={rows:[],types:[]};els.rows.innerHTML='<tr><td colspan="7"><div class="empty"><b>Nie udało się wczytać historii.</b><br>'+esc(error&&error.message?error.message:error)+'</div></td></tr>';}
+    load();
+  </script>
+</body>
+</html>

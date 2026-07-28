@@ -1,0 +1,54 @@
+<style>
+  :root{
+    --ip-primary:#8b1e3f;
+    --ip-primary-hover:#68152e;
+    --ip-gold:#f59e0b;
+    --ip-success:#217346;
+    --ip-warning:#a86600;
+    --ip-danger:#b42318;
+    --ip-text:#251f21;
+    --ip-muted:#6d6367;
+    --ip-bg:#f7f5f3;
+    --ip-surface:#ffffff;
+    --ip-border:#e0e0e0;
+    --ip-shadow:0 8px 24px rgba(32,33,36,.10);
+    --ip-radius:12px;
+  }
+  html,body{font-family:Arial,Roboto,sans-serif!important;color:var(--ip-text);background:var(--ip-bg)}
+  header{background:var(--ip-surface)!important;border-color:var(--ip-border)!important}
+  .title,h1{letter-spacing:-.2px}
+  .subtitle,.sub,.muted,.meta{color:var(--ip-muted)!important}
+  .card,.panel,.list{background:var(--ip-surface)!important;border-color:var(--ip-border)!important;border-radius:var(--ip-radius)!important}
+  input,select,textarea{border-color:#cfd3d7!important;border-radius:9px!important;outline:none;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--ip-primary)!important;box-shadow:0 0 0 3px rgba(139,30,63,.12)!important}
+  button{border-radius:9px!important;transition:transform .08s,background .15s,box-shadow .15s}
+  button:hover{transform:translateY(-1px)}
+  button:active{transform:translateY(0)}
+  button.primary,.primary{background:var(--ip-primary)!important;color:#fff!important}
+  button.primary:hover,.primary:hover{background:var(--ip-primary-hover)!important}
+  button.success,.success{background:#e8f5e9!important;color:var(--ip-success)!important}
+  button.secondary,.secondary{background:#f1f3f4!important;color:#303134!important}
+  button.danger,.danger{background:#fce8e6!important;color:var(--ip-danger)!important}
+  .badge,.chip{border-radius:999px!important}
+  .loading{backdrop-filter:blur(2px)}
+  .pizza{filter:drop-shadow(0 3px 5px rgba(0,0,0,.12))}
+  .status.ok,.message.ok{background:#e6f4ea!important;color:var(--ip-success)!important}
+  .status.warn{background:#fff3e0!important;color:var(--ip-warning)!important}
+  .status.bad,.message.error{background:#fce8e6!important;color:var(--ip-danger)!important}
+  th{background:#faf4ee!important}
+  tr:hover{background:#fff8f3!important}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#c9c9c9;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+<style>
+  .ip-app-header{display:flex;align-items:center;gap:12px;padding:16px 20px;background:#fff;border-bottom:1px solid var(--ip-border)}
+  .ip-app-logo{font-size:38px;line-height:1}
+  .ip-app-title{font-size:22px;font-weight:800;margin:0}
+  .ip-app-subtitle{font-size:13px;color:var(--ip-muted);margin-top:3px}
+  .ip-footer{display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border-top:1px solid var(--ip-border)}
+  .ip-badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .ip-badge-exact{background:#e6f4ea;color:#137333}.ip-badge-alias{background:#e8f0fe;color:#174ea6}
+  .ip-badge-smart{background:#f3e8fd;color:#7627bb}.ip-badge-ambiguous{background:#fef7e0;color:#b06000}
+  .ip-badge-notfound{background:#fce8e6;color:#c5221f}.ip-badge-new{background:#fff2cc;color:#8a5a00}
+</style>

@@ -1,0 +1,74 @@
+<style>
+  .ip-help-button{position:fixed;top:12px;right:54px;z-index:900;display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid #d7c9ce!important;border-radius:999px!important;background:#fff!important;color:#68152e!important;font:700 12px Arial,sans-serif;box-shadow:0 3px 12px rgba(37,31,33,.12);cursor:pointer}
+  .ip-help-button:hover{background:#fff8f3!important}.ip-help-button .ip-help-icon{display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#8b1e3f;color:#fff;font-size:12px}
+  .ip-help-overlay{position:fixed;inset:0;z-index:6000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(37,31,33,.55)}.ip-help-overlay.open{display:flex}
+  .ip-help-dialog{width:min(720px,96vw);max-height:min(760px,90vh);display:flex;flex-direction:column;overflow:hidden;border:1px solid #ded8d4;border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.3);font-family:Arial,sans-serif;color:#251f21}
+  .ip-help-head{display:flex;align-items:flex-start;gap:12px;padding:20px 22px 16px;background:linear-gradient(135deg,#fff 0%,#fff6df 100%);border-bottom:1px solid #ded8d4}.ip-help-head-icon{font-size:31px}.ip-help-heading{flex:1}.ip-help-heading h2{margin:0;color:#68152e;font-size:21px}.ip-help-heading p{margin:5px 0 0;color:#6d6367;font-size:13px;line-height:1.4}
+  .ip-help-close{padding:7px 10px!important;border:0!important;background:#f1f3f4!important;color:#3c4043!important;font-weight:800;cursor:pointer}
+  .ip-help-body{overflow:auto;padding:18px 22px}.ip-help-section{margin:0 0 18px}.ip-help-section:last-child{margin-bottom:0}.ip-help-section h3{margin:0 0 8px;font-size:14px;color:#8b1e3f}.ip-help-section ul{margin:0;padding-left:20px}.ip-help-section li{margin:6px 0;color:#4f474a;font-size:13px;line-height:1.45}.ip-help-note{padding:11px 13px;border-left:4px solid #f59e0b;border-radius:8px;background:#fff8e8;color:#5f5559;font-size:12px;line-height:1.45}
+  .ip-help-footer{display:flex;justify-content:flex-end;padding:12px 22px;border-top:1px solid #ded8d4;background:#faf9f8}.ip-help-footer button{padding:9px 15px;border:0;background:#8b1e3f!important;color:#fff!important;font-weight:800;cursor:pointer}
+  @media(max-width:700px){.ip-help-button{right:46px;padding:7px 9px}.ip-help-button .ip-help-label{display:none}.ip-help-overlay{padding:10px}.ip-help-body{padding:15px}.ip-help-head{padding:16px}}
+</style>
+<script>
+(function(){
+  const helpViews={
+    import:{title:'Import danych',lead:'Od surowego tekstu do bezpiecznego zapisu w inwenturze.',sections:[
+      ['Jak przebiega import',['Wklej tekst dokładnie tak, jak został zapisany podczas liczenia.','Kliknij „Analizuj tekst”, a następnie sprawdź każdą rozpoznaną pozycję.','Pozycje z błędem trzeba poprawić lub wyłączyć z importu. Zapis jest możliwy dopiero po rozwiązaniu aktywnych błędów.']],
+      ['Na co zwrócić uwagę',['Produkt, wartość, typ i lokalizacja muszą odpowiadać rzeczywistemu wpisowi.','„Duplikat” oznacza kilka wpisów dotyczących tego samego miejsca zapisu — aplikacja połączy je przed zapisem.','Niepewnego dopasowania nie zatwierdzaj na siłę. Wybierz właściwy produkt z listy albo dodaj go do katalogu.']]
+    ],note:'Cofnięcie importu przywraca wartości sprzed tego konkretnego zapisu. Nie zastępuje ręcznej kontroli przed zatwierdzeniem.'},
+    finalReview:{title:'Końcowy przegląd i eksport',lead:'Ostatnia kontrola danych przed zamknięciem inwentaryzacji.',sections:[
+      ['Co można zrobić',['Wyszukać produkt, wyświetlić tylko pozycje wymagające uwagi i wyłączyć pozycję z eksportu.','Pola z obramowaniem można poprawić ręcznie w bieżącej INWENTURZE. Kliknij „Zapisz zmiany”, aby utrwalić poprawki.','Dla archiwalnej inwentaryzacji dostępny jest tylko odczyt i ponowne wygenerowanie plików.']],
+      ['Co dzieje się po zakończeniu',['Powstaje kopia archiwalna oraz plik XLSX, a opcjonalnie również PDF.','Zdarzenie eksportu trafia do Historii zdarzeń.','Zakończenie bieżącej inwentaryzacji rozpoczyna proces przygotowania arkusza do kolejnego cyklu.']]
+    ],note:'Przed eksportem zapisz wszystkie ręczne poprawki. Niezapisane zmiany są oznaczone aktywnym przyciskiem „Zapisz zmiany”.'},
+    dashboard:{title:'Dashboard inwentaryzacji',lead:'Czytelne, tylko do odczytu podsumowanie wybranego arkusza.',sections:[
+      ['Zakładki',['Podsumowanie pokazuje kompletność, typy produktów i pozycje wymagające uwagi.','Kategorie prezentują stan końcowy i największe ilości.','Jakość danych wskazuje braki, ostrzeżenia i błędy walidacji.']],
+      ['Źródło danych',['Z listy „Arkusz” wybierz bieżącą inwentaryzację albo archiwum.','„Odśwież” ponownie odczytuje arkusz; dashboard niczego w nim nie zmienia.']]
+    ],note:'Dashboard służy do oceny stanu danych. Poprawki wykonuj w Końcowym przeglądzie albo bezpośrednio w INWENTURZE.'},
+    analytics:{title:'Porównanie inwentaryzacji',lead:'Analiza różnic pomiędzy dwoma zapisanymi stanami.',sections:[
+      ['Porównanie',['Wybierz arkusz bazowy i porównywany, a następnie kliknij „Porównaj”.','Wzrosty i spadki są liczone jako zmiana stanu produktu między wybranymi arkuszami.','Przycisk ⇄ zamienia kolejność porównania.']],
+      ['Dostępne archiwa',['Ta zakładka pokazuje dostępne arkusze bieżące i archiwalne.','Nie jest to Historia zdarzeń z menu — tutaj widzisz stany możliwe do porównania.']]
+    ],note:'Widok jest tylko do odczytu i nie zmienia danych inwentaryzacji.'},
+    history:{title:'Historia zdarzeń',lead:'Chronologiczny dziennik najważniejszych operacji użytkownika.',sections:[
+      ['Co pokazuje',['Importy, rozpoczęcia inwentaryzacji i zakończone eksporty.','Liczbę pozycji, identyfikator operacji oraz wersję aplikacji.','Dla eksportów: linki do XLSX i PDF, jeśli zostały utworzone.']],
+      ['Filtrowanie',['Wybierz typ zdarzenia albo wpisz fragment opisu, identyfikatora lub użytkownika.','Najnowsze zdarzenia są wyświetlane jako pierwsze.']]
+    ],note:'To historia biznesowa. Szczegółowe dane cofania i błędy techniczne są przechowywane osobno i widoczne tylko dla managera.'},
+    aliases:{title:'Alias Manager',lead:'Zarządzanie nazwami, po których Parser rozpoznaje produkty.',sections:[
+      ['Jak działają aliasy',['Alias powinien jednoznacznie wskazywać jeden produkt.','Konflikt oznacza, że ten sam lub równoważny zapis prowadzi do różnych produktów.','Po zmianie aliasów Parser korzysta z odświeżonego katalogu.']],
+      ['Porządkowanie',['„Chronologicznie” grupuje dane według czasu dodania; starsze wpisy bez daty pozostają razem.','„Według produktu” grupuje aliasy produktów, a „alfabetycznie” porządkuje po nazwie aliasu.','Organizowanie usuwa puste przerwy i duplikaty, ale nie zmienia przypisanego produktu.']]
+    ],note:'Krótkie, ogólne aliasy mogą powodować błędne dopasowania. Preferuj pełne i charakterystyczne nazwy.'},
+    products:{title:'Product Manager',lead:'Katalog produktów oraz mapowanie ich pól do arkusza INWENTURA.',sections:[
+      ['Dane produktu',['Nazwa i typ decydują o sposobie interpretacji wartości.','Kategoria i jednostka wpływają na raportowanie.','Mapowanie wskazuje dokładny wiersz i kolumny, do których zapisuje Import.']],
+      ['Aliasy produktu',['Dodawaj tylko zapisy rzeczywiście używane dla wybranego produktu.','Usunięcie aliasu nie usuwa produktu ani danych z inwentury.']]
+    ],note:'Błędne mapowanie może skierować import do niewłaściwej komórki. Po zmianach wykonaj test Parsera na przykładowym wpisie.'},
+    diagnostics:{title:'Diagnostyka Parsera',lead:'Techniczny podgląd tego, jak tekst jest dzielony i dopasowywany.',sections:[
+      ['Jak czytać wynik',['Tokeny pokazują elementy wykryte w tekście, np. liczbę lub lokalizację.','Rozpoznane pozycje pokazują fragment wejścia, wybrany produkt, wynik dopasowania i kandydatów.','EXACT i ALIAS są dopasowaniami bezpośrednimi; AMBIGUOUS i NOT_FOUND wymagają kontroli.']],
+      ['Kiedy używać',['Gdy Import rozdziela frazę w niewłaściwym miejscu.','Gdy produkt przypisuje się do złej pozycji lub dopasowanie jest zbyt słabe.']]
+    ],note:'Diagnostyka niczego nie zapisuje. Jest przeznaczona do analizy problemów przez managera lub administratora.'},
+    guide:{title:'Przewodnik Inventory PRO',lead:'Mapa funkcji i bezpiecznego przebiegu pracy.',sections:[
+      ['Jak korzystać',['Zacznij od sekcji „Typowy przebieg pracy”, a potem przejdź do mapy danych.','Przycisk „? Pomoc” w prawym górnym rogu każdego okna opisuje jego pola i zakładki.','Funkcje techniczne są przeznaczone dla managera i nie są potrzebne w codziennej pracy.']]
+    ],note:'Jeśli nazwa funkcji jest niejasna, nie wykonuj operacji na próbę — otwórz pomoc danego okna lub wróć do przewodnika.'},
+    about:{title:'O aplikacji',lead:'Informacje o uruchomionej wersji Inventory PRO.',sections:[
+      ['Co tu znajdziesz',['Numer wersji potrzebny przy zgłaszaniu problemu.','Nazwę i numer lokalizacji, dla której skonfigurowano plik.','Informację o używanym Parserze i dostępnych formatach raportów.']]
+    ],note:'Przy zgłoszeniu błędu podaj wersję aplikacji, problematyczny tekst oraz nazwę okna, w którym wystąpił problem.'}
+  };
+  function escapeHtml(value){return String(value).replace(/[&<>"']/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char];});}
+  function initHelp(){
+    const key=document.body.getAttribute('data-help-view');
+    const view=helpViews[key];
+    if(!view||document.getElementById('ipHelpButton'))return;
+    const button=document.createElement('button');
+    button.id='ipHelpButton';button.type='button';button.className='ip-help-button';button.setAttribute('aria-label','Otwórz pomoc dla tego okna');
+    button.innerHTML='<span class="ip-help-icon">?</span><span class="ip-help-label">Pomoc</span>';
+    const overlay=document.createElement('div');overlay.id='ipHelpOverlay';overlay.className='ip-help-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-labelledby','ipHelpTitle');
+    const sections=view.sections.map(function(section){return '<section class="ip-help-section"><h3>'+escapeHtml(section[0])+'</h3><ul>'+section[1].map(function(item){return '<li>'+escapeHtml(item)+'</li>';}).join('')+'</ul></section>';}).join('');
+    overlay.innerHTML='<div class="ip-help-dialog"><div class="ip-help-head"><div class="ip-help-head-icon">🍕</div><div class="ip-help-heading"><h2 id="ipHelpTitle">'+escapeHtml(view.title)+'</h2><p>'+escapeHtml(view.lead)+'</p></div><button type="button" class="ip-help-close" aria-label="Zamknij pomoc">✕</button></div><div class="ip-help-body">'+sections+'<div class="ip-help-note"><b>Warto wiedzieć:</b> '+escapeHtml(view.note)+'</div></div><div class="ip-help-footer"><button type="button" class="ip-help-done">Rozumiem</button></div></div>';
+    function open(){overlay.classList.add('open');overlay.querySelector('.ip-help-close').focus();}
+    function close(){overlay.classList.remove('open');button.focus();}
+    button.addEventListener('click',open);overlay.querySelector('.ip-help-close').addEventListener('click',close);overlay.querySelector('.ip-help-done').addEventListener('click',close);overlay.addEventListener('click',function(event){if(event.target===overlay)close();});
+    document.addEventListener('keydown',function(event){if(event.key==='Escape'&&overlay.classList.contains('open'))close();});
+    document.body.appendChild(button);document.body.appendChild(overlay);
+    window.InventoryHelp={open:open,close:close};
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initHelp);else initHelp();
+})();
+</script>

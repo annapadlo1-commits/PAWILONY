@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root { --red:#8b1e3f; --gold:#f59e0b; --green:#217346; --ink:#251f21; --muted:#6d6367; --line:#ded8d4; --bg:#f7f5f3; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,sans-serif; color:var(--ink); background:var(--bg); }
+    header { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; background:white; border-bottom:1px solid var(--line); }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .pizza { font-size:42px; }
+    h1 { margin:0; font-size:24px; }
+    .sub { color:var(--muted); font-size:12px; margin-top:3px; }
+    .summary { display:flex; gap:9px; flex-wrap:wrap; }
+    .chip { background:#fff4df; border:1px solid #f0d39b; border-radius:999px; padding:7px 11px; font-size:12px; font-weight:bold; }
+    .chip.bad { background:#fff0ed; border-color:#f0b5aa; color:#9c2d1b; }
+    main { padding:18px 22px 22px; }
+    .toolbar { display:grid; grid-template-columns:minmax(280px,1fr) 190px 190px auto; gap:10px; margin-bottom:12px; }
+    input, select { width:100%; border:1px solid #cfc5bd; border-radius:8px; padding:10px 11px; font-size:13px; background:white; }
+    button { border:0; border-radius:8px; padding:10px 13px; font-weight:bold; cursor:pointer; }
+    .primary { background:var(--red); color:white; }
+    .secondary { background:#f1e8df; color:var(--ink); }
+    .danger { background:#fff0ed; color:#a32d1a; }
+    .panel { background:white; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    .table-wrap { height:520px; overflow:auto; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    th { position:sticky; top:0; z-index:2; background:#f4ede7; text-align:left; padding:10px; border-bottom:1px solid var(--line); }
+    td { padding:9px 10px; border-bottom:1px solid #eee8e2; vertical-align:top; }
+    tr:hover { background:#fffaf5; }
+    tr.selected { background:#fff1dc; }
+    .status { display:inline-block; padding:3px 7px; border-radius:999px; font-size:10px; font-weight:bold; }
+    .ok { background:#e6f4ea; color:#23723c; }
+    .warn { background:#fff2d5; color:#865b00; }
+    .bad { background:#fde8e5; color:#a62e1c; }
+    .footer { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-top:1px solid var(--line); }
+    .footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.footer-actions select{width:auto;min-width:175px;padding:8px}
+    .message { min-height:18px; font-size:12px; color:var(--muted); }
+    .modal { position:fixed; inset:0; background:rgba(25,20,18,.42); display:none; align-items:center; justify-content:center; padding:20px; }
+    .modal.open { display:flex; }
+    .card { width:520px; max-width:100%; background:white; border-radius:14px; padding:20px; box-shadow:0 18px 50px rgba(0,0,0,.24); }
+    .card h2 { margin:0 0 16px; }
+    .field { margin-bottom:12px; }
+    .field label { display:block; font-size:12px; font-weight:bold; margin-bottom:5px; }
+    .actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+    .muted { color:var(--muted); }
+    @media(max-width:850px){ .toolbar{grid-template-columns:1fr 1fr}.toolbar input{grid-column:1/-1} header{align-items:flex-start;gap:12px}.summary{justify-content:flex-end}.table-wrap{height:500px} }
+  </style>
+  <?!= includeInventoryUiTheme_(); ?>
+  <?!= includeInventoryHelp_(); ?>
+</head>
+<body data-help-view="aliases">
+<header>
+  <div class="brand"><div class="pizza">🍕</div><div><h1>Alias Manager</h1><div class="sub">Inventory PRO <span id="version"></span> · biblioteka rozpoznawania produktów</div></div></div>
+  <div class="summary" id="summary"></div>
+</header>
+<main>
+  <div class="toolbar">
+    <input id="search" placeholder="Szukaj aliasu lub produktu…" oninput="render()">
+    <select id="statusFilter" onchange="render()">
+      <option value="all">Wszystkie rekordy</option>
+      <option value="conflict">Tylko konflikty</option>
+      <option value="orphan">Brak produktu</option>
+      <option value="inactive">Produkt nieaktywny</option>
+      <option value="ok">Tylko poprawne</option>
+    </select>
+    <select id="productFilter" onchange="render()"><option value="">Wszystkie produkty</option></select>
+    <button class="primary" onclick="openCreate()">+ Dodaj alias</button>
+  </div>
+  <div class="panel">
+    <div class="table-wrap">
+      <table><thead><tr><th>Alias</th><th>Produkt docelowy</th><th>Kategoria / typ</th><th>Status</th><th>Dodano</th><th>Wiersz</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+    </div>
+    <div class="footer">
+      <div class="message" id="message">Wczytywanie…</div>
+      <div class="footer-actions"><button class="secondary" onclick="removeDuplicates()">Usuń identyczne duplikaty</button><select id="orderMode" aria-label="Sposób porządkowania"><option value="chronological">Kolejność dodania</option><option value="product">Produkt → alias</option><option value="alias">Alias A–Z</option></select><button class="primary" onclick="organizeAliases()">Uporządkuj aliasy</button><button class="secondary" onclick="loadData()">Odśwież</button></div>
+    </div>
+  </div>
+</main>
+
+<div class="modal" id="editor">
+  <div class="card">
+    <h2 id="editorTitle">Dodaj alias</h2>
+    <input type="hidden" id="editRow">
+    <div class="field"><label>Alias użytkownika</label><input id="editAlias" placeholder="np. bakardi osiem"></div>
+    <div class="field"><label>Produkt docelowy</label><select id="editProduct"></select></div>
+    <div class="muted" style="font-size:12px">Alias nie może wskazywać dwóch różnych produktów. Przed zapisem aplikacja przeprowadzi walidację konfliktów.</div>
+    <div class="actions"><button class="secondary" onclick="closeEditor()">Anuluj</button><button class="primary" onclick="saveAlias()">Zapisz</button></div>
+  </div>
+</div>
+
+<div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="card">
+    <h2 id="confirmTitle">Potwierdź operację</h2>
+    <div id="confirmText" class="muted" style="line-height:1.5"></div>
+    <div class="actions"><button class="secondary" onclick="closeConfirm()">Anuluj</button><button id="confirmAction" class="primary">Potwierdź</button></div>
+  </div>
+</div>
+
+<script>
+let model={aliases:[],products:[],summary:{}};
+function server(name,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));}
+async function loadData(){setMessage('Wczytywanie biblioteki aliasów…');try{const result=await server('getAliasManagerData');if(!result)throw new Error('Brak odpowiedzi serwera.');model=result;document.getElementById('version').textContent='v'+result.version;fillProducts();renderSummary();render();setMessage('Gotowe.');}catch(e){setMessage(errorText(e),true);}}
+function fillProducts(){const productFilter=document.getElementById('productFilter');const editor=document.getElementById('editProduct');const old=productFilter.value;productFilter.innerHTML='<option value="">Wszystkie produkty</option>';editor.innerHTML='';model.products.forEach(p=>{const opt=document.createElement('option');opt.value=p.name;opt.textContent=p.name+(p.active?'':' (nieaktywny)');productFilter.appendChild(opt);const opt2=opt.cloneNode(true);editor.appendChild(opt2);});productFilter.value=old;}
+function renderSummary(){const s=model.summary;document.getElementById('summary').innerHTML=`<span class="chip">Aliasy: ${s.aliases||0}</span><span class="chip">Unikalne: ${s.uniqueAliases||0}</span><span class="chip bad">Konflikty: ${s.conflicts||0}</span><span class="chip bad">Bez produktu: ${s.orphaned||0}</span><span class="chip">Puste miejsca: ${s.blankRows||0}</span>`;}
+function filtered(){const q=norm(document.getElementById('search').value);const status=document.getElementById('statusFilter').value;const product=document.getElementById('productFilter').value;return model.aliases.filter(a=>{if(q&&!norm(a.alias+' '+a.product).includes(q))return false;if(product&&a.product!==product)return false;if(status==='conflict'&&!a.conflict)return false;if(status==='orphan'&&a.productExists)return false;if(status==='inactive'&&(!a.productExists||a.productActive))return false;if(status==='ok'&&(a.conflict||!a.productExists||!a.productActive))return false;return true;});}
+function render(){const rows=filtered();document.getElementById('rows').innerHTML=rows.map(a=>{let status='<span class="status ok">OK</span>';if(a.conflict)status='<span class="status bad">KONFLIKT</span><div class="muted">'+esc(a.conflictTargets.join(' / '))+'</div>';else if(!a.productExists)status='<span class="status bad">BRAK PRODUKTU</span>';else if(!a.productActive)status='<span class="status warn">NIEAKTYWNY</span>';else if(a.isExactName)status='<span class="status warn">NAZWA = ALIAS</span>';return `<tr><td><b>${esc(a.alias||'(pusty)')}</b></td><td>${esc(a.product||'(pusty)')}</td><td>${esc(a.category||'')}<div class="muted">${esc(a.type||'')}</div></td><td>${status}</td><td>${a.createdAt?esc(new Date(a.createdAt).toLocaleString('pl-PL')):'—'}</td><td>${a.row}</td><td><button class="secondary" onclick="openEditByRow(${a.row})">Edytuj</button> <button class="danger" onclick="removeAlias(${a.row})">Usuń</button></td></tr>`;}).join('');setMessage(`Widoczne rekordy: ${rows.length} z ${model.aliases.length}`);}
+function openCreate(){document.getElementById('editorTitle').textContent='Dodaj alias';document.getElementById('editRow').value='';document.getElementById('editAlias').value='';if(model.products.length)document.getElementById('editProduct').value=model.products[0].name;document.getElementById('editor').classList.add('open');document.getElementById('editAlias').focus();}
+function openEdit(a){document.getElementById('editorTitle').textContent='Edytuj alias';document.getElementById('editRow').value=a.row;document.getElementById('editAlias').value=a.alias;document.getElementById('editProduct').value=a.product;document.getElementById('editor').classList.add('open');}
+function openEditByRow(row){const alias=model.aliases.find(item=>Number(item.row)===Number(row));if(alias)openEdit(alias);}
+function closeEditor(){document.getElementById('editor').classList.remove('open');}
+async function saveAlias(){const payload={row:Number(document.getElementById('editRow').value)||null,alias:document.getElementById('editAlias').value,product:document.getElementById('editProduct').value};setMessage('Zapisywanie…');try{const result=payload.row?await server('updateAliasFromAliasManager',payload):await server('addAliasFromAliasManager',payload);closeEditor();setMessage(result.message||'Zapisano.');await loadData();}catch(e){setMessage(errorText(e),true);}}
+function askConfirm(title,text,action,label){document.getElementById('confirmTitle').textContent=title;document.getElementById('confirmText').textContent=text;const button=document.getElementById('confirmAction');button.textContent=label||'Potwierdź';button.onclick=async()=>{closeConfirm();await action();};document.getElementById('confirmModal').classList.add('open');}
+function closeConfirm(){document.getElementById('confirmModal').classList.remove('open');}
+function removeAlias(row){const item=model.aliases.find(alias=>Number(alias.row)===Number(row));if(!item)return;askConfirm('Usunąć alias?',`Alias „${item.alias}” wskazujący produkt „${item.product}” zostanie trwale usunięty.`,async()=>{try{const result=await server('deleteAliasFromAliasManager',row);setMessage(result.message);await loadData();}catch(e){setMessage(errorText(e),true);}},'Usuń alias');}
+async function organizeAliases(){const mode=document.getElementById('orderMode').value;setMessage('Porządkowanie aliasów…');try{const result=await server('organizeAliasDictionary',mode);setMessage(result.message||'Uporządkowano.');await loadData();}catch(e){setMessage(errorText(e),true);}}
+function removeDuplicates(){askConfirm('Usunąć duplikaty?','Usunięte zostaną tylko identyczne pary alias → produkt. Konfliktowe aliasy wskazujące różne produkty pozostaną do ręcznej decyzji.',async()=>{try{const result=await server('deleteDuplicateAliasesFromAliasManager');setMessage(result.message);await loadData();}catch(e){setMessage(errorText(e),true);}},'Usuń duplikaty');}
+function setMessage(text,bad){const el=document.getElementById('message');el.textContent=text||'';el.style.color=bad?'#a62e1c':'';}
+function norm(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function js(v){return String(v||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');}
+function errorText(e){return e&&e.message?e.message:String(e||'Nieznany błąd');}
+document.getElementById('editor').addEventListener('click',e=>{if(e.target.id==='editor')closeEditor();});
+document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target.id==='confirmModal')closeConfirm();});
+loadData();
+</script>
+</body>
+</html>

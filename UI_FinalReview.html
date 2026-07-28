@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root{--tomato:#8b1e3f;--cheese:#f59e0b;--green:#217346;--cream:#f7f5f3;--line:#ded8d4;--text:#251f21}
+    *{box-sizing:border-box} body{font-family:Arial,sans-serif;margin:0;background:var(--cream);color:var(--text)}
+    header{display:flex;align-items:center;gap:14px;padding:18px 22px;background:white;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+    .pizza{font-size:42px}.title h1{font-size:22px;margin:0}.title p{margin:4px 0 0;color:#666;font-size:13px}
+    main{padding:18px 22px}.cards{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+    .card{background:white;border:1px solid var(--line);border-radius:12px;padding:13px}.card b{font-size:24px;display:block;margin-top:5px}.card.warn b{color:#b06000}.card.bad b{color:#c5221f}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:white;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+    input[type=search],textarea,select{border:1px solid #ccc;border-radius:8px;padding:9px;font:inherit}input[type=search]{min-width:280px}.spacer{flex:1}
+    button{border:0;border-radius:9px;padding:10px 15px;font-weight:700;cursor:pointer}.primary{background:var(--tomato);color:white}.secondary{background:#f1f3f4}.green{background:var(--green);color:white}button:disabled{opacity:.55;cursor:not-allowed}
+    .table-wrap{background:white;border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:430px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}th{background:#fff2cc;position:sticky;top:0;z-index:2}tr.flagged{background:#fff8e1}tr.missing{background:#fce8e6}
+    td input.value{width:86px;border:1px solid #ccc;border-radius:6px;padding:6px}.flags{white-space:normal;min-width:190px}.pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#fce8e6;color:#c5221f;margin:2px;font-size:11px}
+    .status{margin-top:12px;padding:12px;border-radius:9px;display:none}.status.show{display:block}.status.ok{background:#e6f4ea;color:#137333}.status.error{background:#fce8e6;color:#c5221f}
+    .links a{display:inline-block;margin-right:12px;color:#0b57d0}.loading{padding:80px;text-align:center;font-size:18px}
+    .edit-hint{display:none;margin:-2px 0 12px;padding:10px 12px;border:1px solid #d7e5da;border-radius:9px;background:#f0f8f2;color:#285f38;font-size:12px}.edit-hint.show{display:block}
+    .review-list{flex:1 1 auto;min-height:120px;overflow:auto;margin:12px 0;border:1px solid var(--line);border-radius:10px}.review-item{padding:10px 12px;border-bottom:1px solid #eee}.review-item:last-child{border-bottom:0}.review-reason{display:inline-block;margin-left:8px;padding:3px 7px;border-radius:999px;background:#fce8e6;color:#b3261e;font-size:11px;font-weight:700}.review-ok{background:#e6f4ea;color:#137333}
+    .fr-modal{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:12px;background:rgba(37,31,33,.52)}.fr-modal.open{display:flex}.fr-modal-card{display:flex;flex-direction:column;width:min(680px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:hidden;padding:20px;border-radius:16px;background:#fff;box-shadow:0 18px 55px rgba(0,0,0,.28)}.fr-modal-card h2{flex:0 0 auto;margin:0 0 8px;color:#8b1e3f}.fr-modal-card p{flex:0 0 auto;margin:4px 0;color:#5f6368;line-height:1.4}.modal-summary{flex:0 0 auto;margin:10px 0;padding:10px;border-radius:10px;background:#f7f5f3;font-size:13px}.fr-modal-actions{display:flex;flex:0 0 auto;justify-content:flex-end;gap:9px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);background:#fff}
+    @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}header{position:static}}
+  .readonly-value{display:inline-flex;flex-direction:column;margin:0 10px 6px 0;padding:6px 9px;border:1px solid #e0e0e0;border-radius:8px;background:#fafafa}.readonly-value small{color:#666}.readonly-value b{font-size:14px}</style>
+  <?!= includeInventoryUiTheme_(); ?>
+  <?!= includeInventoryHelp_(); ?>
+</head>
+<body data-help-view="finalReview">
+<header><div class="pizza">🍕</div><div class="title"><h1>Inventory PRO — końcowy przegląd</h1><p>Sprawdź wyniki, popraw wartości i wygeneruj profesjonalny plik Excel oraz raport PDF.</p></div></header>
+<main>
+  <div id="loading" class="loading">Ładuję podsumowanie…</div>
+  <div id="app" hidden>
+    <section class="cards">
+      <div class="card">Produkty<b id="products">0</b></div>
+      <div class="card">Uzupełnione<b id="completed">0</b></div>
+      <div class="card bad">Brak wartości<b id="missing">0</b></div>
+      <div class="card warn">Ostrzeżenia<b id="warnings">0</b></div>
+      <div class="card">Nowe produkty<b id="newProducts">0</b></div>
+    </section>
+    <section class="toolbar"><label><b>Arkusz:</b> <select id="sourceSheet" onchange="changeSource()"></select></label>
+      <input id="search" type="search" placeholder="Szukaj produktu lub kategorii…" oninput="renderRows()">
+      <label><input id="onlyIssues" type="checkbox" onchange="renderRows()"> Tylko wymagające uwagi</label>
+      <div class="spacer"></div>
+      <button class="secondary" onclick="reloadData()">Odśwież</button>
+      <button class="green" id="saveCorrections" onclick="saveCorrections()" disabled>Zapisz zmiany</button>
+      <button class="secondary" id="reviewBtn" onclick="openCategoryReview()">Kategorie do zatwierdzenia: 0</button>
+      <label><input id="includePdf" type="checkbox" onchange="updateExportButtonLabel()"> Raport PDF</label><button class="primary" id="exportBtn" onclick="finalizeExport()">Zakończ i eksportuj XLSX</button>
+    </section>
+    <div id="editHint" class="edit-hint">Pola z obramowaniem można poprawić ręcznie. Zapisane zmiany aktualizują bieżący arkusz INWENTURA, a wartości wyliczane odświeżą się automatycznie.</div>
+    <section class="table-wrap"><table><thead><tr><th>Eksport</th><th>Kategoria</th><th>Produkt</th><th>Typ</th><th>Wartości</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></section>
+    <p style="margin-bottom:6px"><b>Notatka do eksportu</b></p><textarea id="note" rows="2" style="width:100%" placeholder="Opcjonalna notatka dla osoby przeglądającej raport"></textarea>
+    <div id="status" class="status"></div>
+  </div>
+</main>
+<div id="categoryReview" class="fr-modal" role="dialog" aria-modal="true" aria-labelledby="categoryReviewTitle">
+  <div class="fr-modal-card">
+    <h2 id="categoryReviewTitle">Weryfikacja braków według kategorii</h2>
+    <p>Wybierz kategorię, przejrzyj wszystkie wskazane produkty i zatwierdź ją jednym przyciskiem.</p>
+    <div id="reasonViews" class="actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0"></div>
+    <label><b>Kategoria:</b> <select id="reviewCategory" onchange="renderCategoryReview()"></select></label>
+    <div id="reviewCategorySummary" class="modal-summary"></div>
+    <div id="reviewCategoryItems" class="review-list"></div>
+    <div class="fr-modal-actions"><button class="secondary" onclick="closeCategoryReview()">Zamknij</button><button class="green" id="confirmCategoryBtn" onclick="confirmCurrentCategory()">Zatwierdzam całą kategorię</button></div>
+  </div>
+</div>
+<div id="exportConfirm" class="fr-modal" role="dialog" aria-modal="true" aria-labelledby="exportConfirmTitle">
+  <div class="fr-modal-card">
+    <h2 id="exportConfirmTitle">Potwierdź zakończenie</h2>
+    <p id="exportConfirmText"></p>
+    <div id="exportConfirmSummary" class="modal-summary"></div>
+    <div class="fr-modal-actions"><button class="secondary" onclick="closeExportConfirm()">Wróć do przeglądu</button><button class="primary" onclick="confirmExport()">Potwierdzam i eksportuję</button></div>
+  </div>
+</div>
+<script>
+const CURRENT_INVENTORY_SHEET = <?!= JSON.stringify(CONFIG.SHEETS.INVENTORY) ?>;
+const LOCATION_REVIEW_ORDER = <?!= JSON.stringify(getLocationUiOptions_().map(function(item) { return item.label; })) ?>;
+let data=null; const edits={}; const confirmedCategories=new Set();
+function formatValue(v){const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat('pl-PL',{maximumFractionDigits:3}).format(n):v;}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function load(){google.script.run.withSuccessHandler(setSources).withFailureHandler(showError).getFinalReviewSources();}
+function setSources(sources){const sel=document.getElementById('sourceSheet');const previous=sel.value;sel.innerHTML=sources.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}${s.current?' — bieżąca':''}</option>`).join('');if(previous&&sources.some(s=>s.name===previous))sel.value=previous;loadSelected();}
+function loadSelected(){const name=document.getElementById('sourceSheet').value||CURRENT_INVENTORY_SHEET;google.script.run.withSuccessHandler(setData).withFailureHandler(showError).getFinalReviewData(name);}
+function changeSource(){Object.keys(edits).forEach(k=>delete edits[k]);document.getElementById('loading').hidden=false;document.getElementById('app').hidden=true;loadSelected();}
+function reloadData(){Object.keys(edits).forEach(k=>delete edits[k]);document.getElementById('loading').hidden=false;document.getElementById('app').hidden=true;loadSelected();}
+function setData(result){data=result;confirmedCategories.clear();document.getElementById('includePdf').checked=false;document.getElementById('loading').hidden=true;document.getElementById('app').hidden=false;document.getElementById('products').textContent=result.summary.products;document.getElementById('completed').textContent=result.summary.completed;document.getElementById('missing').textContent=result.summary.missing;document.getElementById('warnings').textContent=result.summary.warningProducts;document.getElementById('newProducts').textContent=result.newProducts.length;document.getElementById('saveCorrections').disabled=true;document.getElementById('saveCorrections').style.display=result.isCurrentInventory?'inline-block':'none';document.getElementById('editHint').classList.toggle('show',result.isCurrentInventory);updateExportButtonLabel();updateCategoryReviewButton();renderRows();const blocking=(result.validationIssues||[]).filter(x=>String(x.severity).toUpperCase()==='ERROR');if(blocking.length)showStatus('Wykryto błędy blokujące eksport: '+blocking.slice(0,3).map(x=>(x.product?x.product+' — ':'')+x.message).join('; '),'error');}
+function updateExportButtonLabel(){if(!data)return;const pdf=document.getElementById('includePdf').checked;document.getElementById('exportBtn').textContent=(data.isCurrentInventory?'Zakończ i eksportuj ':'Generuj ponownie ')+(pdf?'XLSX + PDF':'XLSX');}
+function renderRows(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const only=document.getElementById('onlyIssues').checked;
+  const tbody=document.getElementById('rows');
+  tbody.innerHTML='';
+  data.items.filter(x=>{
+    const hit=(x.product+' '+x.category).toLowerCase().includes(q);
+    return hit&&(!only||x.flags.length);
+  }).forEach(item=>{
+    const tr=document.createElement('tr');
+    tr.className=item.flags.includes('BRAK WARTOŚCI')?'missing':(item.flags.length?'flagged':'');
+    const editable=item.cells||{};
+    const valueOrder=item.type==='LOCATION'?LOCATION_REVIEW_ORDER.concat(['Stan końcowy']):(item.type==='KEG'?['Waga brutto','Waga pustego kega','Otwarty keg netto','Pełne kegi','Pojemność kega','Pełne kegi w l','Stan końcowy']:['Waga brutto','Waga pustej butelki','Otwarta zawartość netto','PREP netto','Pełne butelki','Pojemność butelki','Pełne butelki w l','Stan końcowy']);
+    const vals=valueOrder.filter(label=>Object.prototype.hasOwnProperty.call(item.values,label)).map(label=>{
+      const a1=editable[label];
+      const value=a1&&edits[a1]!==undefined?edits[a1]:item.values[label];
+      if(a1){
+        return `<label style="display:inline-block;margin-right:8px">${esc(label)}<br><input class="value" ${data.isCurrentInventory?'':'disabled'} data-a1="${esc(a1)}" value="${esc(value)}" onchange="editValue(this)"></label>`;
+      }
+      return `<span class="readonly-value"><small>${esc(label)}</small><b>${esc(value===''?'—':formatValue(value))}</b></span>`;
+    }).join('');
+    const flags=item.flags.length?item.flags.map(f=>`<span class="pill">${esc(f)}</span>`).join(''):'OK';
+    tr.innerHTML=`<td><input type="checkbox" class="include" data-key="${esc(item.key)}" checked></td><td>${esc(item.category)}</td><td><b>${esc(item.product)}</b></td><td>${esc(item.type)}</td><td>${vals}</td><td class="flags">${flags}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function editValue(el){edits[el.dataset.a1]=el.value;el.style.borderColor='#2e7d32';document.getElementById('saveCorrections').disabled=false;showStatus('Masz niezapisane zmiany: '+Object.keys(edits).length+'.','ok');}
+function corrections(){return Object.keys(edits).map(a1=>({a1,value:edits[a1]}));}
+function saveCorrections(){if(!Object.keys(edits).length){showStatus('Nie ma zmian do zapisania.','ok');return;}toggleBusy(true);google.script.run.withSuccessHandler(r=>{showStatus('Zapisano poprawki: '+r.updated,'ok');Object.keys(edits).forEach(k=>delete edits[k]);reloadData();toggleBusy(false);}).withFailureHandler(e=>{showError(e);toggleBusy(false);}).applyFinalReviewCorrections(corrections(),data.sourceSheetName);}
+function requiredReviewCategories(){return (data&&data.reviewCategories)||[];}
+function unconfirmedReviewCategories(){return requiredReviewCategories().filter(group=>!confirmedCategories.has(group.category));}
+function updateCategoryReviewButton(){const groups=requiredReviewCategories();const left=unconfirmedReviewCategories().length;const btn=document.getElementById('reviewBtn');btn.textContent=groups.length?'Kategorie do zatwierdzenia: '+left+'/'+groups.length:'Brak kategorii do zatwierdzenia';btn.className=left?'primary':'secondary review-ok';btn.disabled=!groups.length;}
+function openCategoryReview(){const groups=requiredReviewCategories();if(!groups.length){showStatus('Nie ma kategorii wymagających zatwierdzenia.','ok');return;}const select=document.getElementById('reviewCategory');select.hidden=false;select.parentElement.hidden=false;select.innerHTML=groups.map(group=>`<option value="${esc(group.category)}">${esc(group.category)} — ${group.total}</option>`).join('');const first=unconfirmedReviewCategories()[0];if(first)select.value=first.category;renderReasonButtons();renderCategoryReview();document.getElementById('categoryReview').classList.add('open');}
+function closeCategoryReview(){document.getElementById('categoryReview').classList.remove('open');}
+function reviewReasonLabel(reason){return({MISSING_PRODUCT:'BRAK PRODUKTU',FULL_UNITS_ONLY:'TYLKO PEŁNE SZTUKI',PACKAGING_DATA_MISSING:'BRAK DANYCH OPAKOWANIA',REFERENCE_RESET_REQUIRED:'NOWY PUNKT REFERENCYJNY'})[reason]||reason;}
+function allReasonItems(reason){const found=[];requiredReviewCategories().forEach(group=>(group.products||[]).forEach(item=>{if(item.reason===reason)found.push(Object.assign({category:group.category},item));}));return found;}
+function renderReasonButtons(){const reasons=['MISSING_PRODUCT','FULL_UNITS_ONLY','PACKAGING_DATA_MISSING','REFERENCE_RESET_REQUIRED'];document.getElementById('reasonViews').innerHTML='<button class="secondary" onclick="renderCategoryReview()">Według kategorii</button>'+reasons.map(reason=>{const count=allReasonItems(reason).length;return count?`<button class="secondary" onclick="renderReasonReview('${reason}')">${esc(reviewReasonLabel(reason))}: ${count}</button>`:''}).join('');}
+function renderReasonReview(reason){const list=allReasonItems(reason);document.getElementById('reviewCategorySummary').innerHTML='<b>Przegląd przekrojowy: '+esc(reviewReasonLabel(reason))+'</b><br>Produkty ze wszystkich kategorii: '+list.length+'<br><small>Zatwierdzanie nadal odbywa się całymi kategoriami.</small>';document.getElementById('reviewCategoryItems').innerHTML=list.map(item=>`<div class="review-item"><b>${esc(item.product)}</b><span class="review-reason">${esc(item.category)}</span><br><small>Stan końcowy: ${esc(formatValue(item.finalTotal))} ${esc(item.unit)}</small><br><button class="secondary" style="margin-top:6px" onclick="goToReviewCategory('${encodeURIComponent(item.category)}')">Otwórz kategorię</button></div>`).join('');document.getElementById('confirmCategoryBtn').disabled=true;document.getElementById('confirmCategoryBtn').textContent='Wybierz kategorię do zatwierdzenia';}
+function goToReviewCategory(category){document.getElementById('reviewCategory').value=decodeURIComponent(category);renderCategoryReview();}
+function renderCategoryReview(){const category=document.getElementById('reviewCategory').value;const group=requiredReviewCategories().find(item=>item.category===category);if(!group)return;const confirmed=confirmedCategories.has(category);document.getElementById('reviewCategorySummary').innerHTML='<b>'+esc(category)+'</b><br>Brak produktu: '+group.missingProducts+' · Tylko pełne sztuki: '+group.fullUnitsOnly+' · Brak danych opakowania: '+(group.packagingDataMissing||0)+' · Nowy punkt referencyjny: '+(group.referenceResetRequired||0)+' · Razem: '+group.total+(confirmed?'<br><span style="color:#137333"><b>Kategoria zatwierdzona</b></span>':'');document.getElementById('reviewCategoryItems').innerHTML=group.products.map(item=>`<div class="review-item"><b>${esc(item.product)}</b><span class="review-reason">${esc(reviewReasonLabel(item.reason))}</span><br><small>Stan końcowy: ${esc(formatValue(item.finalTotal))} ${esc(item.unit)}</small></div>`).join('');const btn=document.getElementById('confirmCategoryBtn');btn.disabled=confirmed;btn.textContent=confirmed?'Kategoria zatwierdzona':'Zatwierdzam całą kategorię';}
+function confirmCurrentCategory(){const category=document.getElementById('reviewCategory').value;if(!category)return;confirmedCategories.add(category);renderCategoryReview();updateCategoryReviewButton();const next=unconfirmedReviewCategories()[0];if(next){document.getElementById('reviewCategory').value=next.category;renderCategoryReview();}else{showStatus('Zatwierdzono wszystkie kategorie wymagające weryfikacji.','ok');}}
+function finalizeExport(){const pending=unconfirmedReviewCategories();if(pending.length){openCategoryReview();showStatus('Przed eksportem zatwierdź wszystkie kategorie wymagające weryfikacji.','error');return;}const excluded=document.querySelectorAll('.include:not(:checked)').length;document.getElementById('exportConfirmTitle').textContent=data.isCurrentInventory?'Zakończyć inwentaryzację?':'Wygenerować ponownie raport?';document.getElementById('exportConfirmText').textContent=data.isCurrentInventory?'Utworzymy archiwum, plik XLSX i opcjonalny PDF. Po poprawnym eksporcie rozpocznie się nowa, pusta inwentaryzacja.':'Utworzymy nowy eksport na podstawie wybranego arkusza archiwalnego.';document.getElementById('exportConfirmSummary').innerHTML='<b>Do eksportu:</b> '+(data.items.length-excluded)+' z '+data.items.length+' produktów<br><b>Zatwierdzone kategorie:</b> '+confirmedCategories.size+'<br><b>Niezapisane poprawki:</b> '+Object.keys(edits).length+'<br><b>PDF:</b> '+(document.getElementById('includePdf').checked?'tak':'nie');document.getElementById('exportConfirm').classList.add('open');}
+function closeExportConfirm(){document.getElementById('exportConfirm').classList.remove('open');}
+function confirmExport(){closeExportConfirm();const excluded=[...document.querySelectorAll('.include:not(:checked)')].map(x=>x.dataset.key);const wantsPdf=document.getElementById('includePdf').checked;toggleBusy(true);showStatus('Generuję Excel PRO'+(wantsPdf?' i raport PDF':'')+'. To może potrwać kilkanaście sekund…','ok');google.script.run.withSuccessHandler(r=>{Object.keys(edits).forEach(k=>delete edits[k]);const pdf=r.pdfUrl?`<a href="${esc(r.pdfUrl)}" target="_blank">Otwórz raport PDF</a>`:'';showStatus(`<b>Gotowe — ${esc(r.exportId)}</b><div class="links" style="margin-top:8px"><a href="${esc(r.xlsxUrl)}" target="_blank">Otwórz plik XLSX</a>${pdf}<a href="${esc(r.spreadsheetUrl)}" target="_blank">Otwórz wersję Google Sheets</a></div>`,'ok',true);toggleBusy(false);}).withFailureHandler(e=>{showError(e);toggleBusy(false);}).finalizeInventoryAndExport({corrections:corrections(),excludedProductKeys:excluded,confirmedReviewCategories:[...confirmedCategories],note:document.getElementById('note').value,sourceSheetName:data.sourceSheetName,includePdf:wantsPdf});}
+function toggleBusy(on){document.getElementById('exportBtn').disabled=on;document.getElementById('saveCorrections').disabled=on||!data||!data.isCurrentInventory||!Object.keys(edits).length;}
+function showStatus(msg,type,html){const el=document.getElementById('status');el.className='status show '+type;if(html)el.innerHTML=msg;else el.textContent=msg;}
+function showError(e){showStatus((e&&e.message)||String(e),'error');document.getElementById('loading').hidden=true;}
+document.getElementById('exportConfirm').addEventListener('click',event=>{if(event.target.id==='exportConfirm')closeExportConfirm();});
+document.getElementById('categoryReview').addEventListener('click',event=>{if(event.target.id==='categoryReview')closeCategoryReview();});
+load();
+</script>
+</body>
+</html>

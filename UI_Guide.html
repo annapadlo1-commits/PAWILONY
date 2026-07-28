@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= includeInventoryUiTheme_(); ?>
+  <?!= includeInventoryHelp_(); ?>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f7f5f3;color:#251f21;overflow:hidden}.guide{height:100vh;display:flex;flex-direction:column}.content{padding:18px 22px 26px;overflow:auto}.intro{margin:0 0 16px;color:#6d6367;line-height:1.5}.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.step{position:relative;padding:14px;border:1px solid #ded8d4;border-radius:13px;background:#fff}.step b{display:block;color:#8b1e3f;margin-bottom:6px}.step p{margin:0;color:#5f5559;font-size:12px;line-height:1.4}.number{display:grid;place-items:center;width:26px;height:26px;margin-bottom:8px;border-radius:50%;background:#8b1e3f;color:#fff;font-weight:900}
+    .panel{margin-bottom:16px;overflow:hidden;border:1px solid #ded8d4;border-radius:13px;background:#fff}.panel h2{margin:0;padding:13px 15px;background:#fff8f3;color:#68152e;font-size:16px}.panel-body{padding:14px 15px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}th{background:#faf4ee}.role{display:inline-block;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800}.user{background:#e6f4ea;color:#137333}.manager{background:#fef7e0;color:#9a5500}.technical{background:#f1f3f4;color:#5f6368}.tips{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tip{padding:12px;border-left:4px solid #f59e0b;border-radius:8px;background:#fff8e8;font-size:12px;line-height:1.45}.footer{display:flex;align-items:center;justify-content:space-between;padding:11px 22px;border-top:1px solid #ded8d4;background:#fff;color:#6d6367;font-size:12px}.footer button{padding:9px 15px;border:0;font-weight:800;cursor:pointer}@media(max-width:760px){.flow{grid-template-columns:1fr 1fr}.tips{grid-template-columns:1fr}}
+  </style>
+</head>
+<body data-help-view="guide">
+  <div class="guide">
+    <div class="ip-app-header"><div class="ip-app-logo pizza">🍕</div><div><div class="ip-app-title">Inventory PRO — przewodnik</div><div class="ip-app-subtitle">Co zrobić, gdzie znaleźć dane i czego spodziewać się po każdej operacji</div></div></div>
+    <main class="content">
+      <p class="intro">Codzienna praca odbywa się w czterech krokach. Arkusze techniczne są ukryte w widoku użytkownika, ponieważ służą do cofania operacji i diagnozowania błędów, a nie do ręcznej edycji.</p>
+      <section class="flow">
+        <div class="step"><span class="number">1</span><b>Import</b><p>Wklej tekst, sprawdź dopasowania, popraw błędy i zapisz zweryfikowane pozycje.</p></div>
+        <div class="step"><span class="number">2</span><b>Kontrola</b><p>Otwórz końcowy przegląd, wyszukaj braki i zapisz ewentualne ręczne poprawki.</p></div>
+        <div class="step"><span class="number">3</span><b>Eksport</b><p>Po kontroli zakończ inwentaryzację i wygeneruj XLSX oraz opcjonalny PDF.</p></div>
+        <div class="step"><span class="number">4</span><b>Analiza</b><p>Użyj dashboardu, Historii zdarzeń lub porównania archiwalnych inwentaryzacji.</p></div>
+      </section>
+      <section class="panel"><h2>Mapa danych — co jest czym?</h2><div class="panel-body"><table><thead><tr><th>Miejsce</th><th>Rola</th><th>Do czego służy</th><th>Czy edytować ręcznie?</th></tr></thead><tbody>
+        <tr><td><b>INWENTURA</b></td><td><span class="role user">Użytkownik</span></td><td>Bieżący stan produktów i wartości robocze.</td><td>Tak, świadomie; najlepiej przez Końcowy przegląd.</td></tr>
+        <tr><td><b>Historia zdarzeń</b></td><td><span class="role user">Użytkownik</span></td><td>Jedna pozycja dla importu, eksportu lub rozpoczęcia sesji.</td><td>Nie — to dziennik operacji.</td></tr>
+        <tr><td><b>Raport</b></td><td><span class="role technical">Starsze dane</span></td><td>Historyczny rejestr szczegółów importów ze starszych wersji. Nowe wpisy nie są już dublowane w tym arkuszu.</td><td>Nie.</td></tr>
+        <tr><td><b>Audyt importów</b></td><td><span class="role technical">Techniczne</span></td><td>Jedno techniczne źródło importu: wartości przed i po zapisie, duplikaty i jakość. Na jego podstawie działa cofanie.</td><td>Nigdy.</td></tr>
+        <tr><td><b>Log techniczny</b></td><td><span class="role technical">Techniczne</span></td><td>Błędy, czasy i szczegóły potrzebne do diagnozy.</td><td>Nie; można go wyczyścić z menu administratora.</td></tr>
+        <tr><td><b>Archiwum</b></td><td><span class="role manager">Manager</span></td><td>Zamknięte stany używane do raportów i porównań.</td><td>Nie.</td></tr>
+      </tbody></table></div></section>
+      <section class="panel"><h2>Najważniejsze zasady bezpieczeństwa</h2><div class="panel-body tips"><div class="tip"><b>Przed zapisem importu</b><br>Sprawdź produkt, liczbę, typ i lokalizację. Szczególnie uważaj na wpisy oznaczone jako niejednoznaczne.</div><div class="tip"><b>Przed eksportem</b><br>Zapisz ręczne poprawki i przejrzyj pozycje wymagające uwagi. Eksport tworzy archiwum.</div><div class="tip"><b>Aliasy</b><br>Ten sam alias powinien prowadzić do jednego produktu. Unikaj zbyt ogólnych skrótów.</div><div class="tip"><b>Problem techniczny</b><br>Zapisz tekst wejściowy, wersję aplikacji i wynik Diagnostyki Parsera. Nie poprawiaj rejestrów technicznych ręcznie.</div></div></section>
+    </main>
+    <footer class="footer"><span>W każdym oknie użyj przycisku „? Pomoc”, aby zobaczyć objaśnienia jego sekcji.</span><button class="primary" onclick="google.script.host.close()">Zamknij</button></footer>
+  </div>
+</body>
+</html>
