@@ -36,7 +36,7 @@ function parseInventoryText(inputText, runtimeContext) {
 }
 
 /**
- * Inventory PRO Enterprise v2.1.3 Recovery
+ * Inventory PRO Enterprise v2.1.3 Recovery (Zabezpieczony)
  *
  * Parser:
  * - nie wymaga Enterow,
@@ -59,8 +59,16 @@ function parseInventoryTextContinuous_(inputText, runtimeContext) {
 
   let currentLocation = '';
   let position = 0;
+  let lastPosition = -1; // Kontrola postępu pętli (Guard przed infinite loop)
 
   while (position < tokens.length) {
+    // TWARDE ZABEZPIECZENIE: Zapobieganie zawieszeniu skryptu (infinite loop guard)
+    if (position <= lastPosition) {
+      position++;
+      continue;
+    }
+    lastPosition = position;
+
     const connector = normalizeWordForParser_(tokens[position]);
 
     if (isConnectorWord_(connector) || isQuantityUnitWord_(connector)) {
@@ -196,6 +204,7 @@ function parseInventoryTextContinuous_(inputText, runtimeContext) {
       });
     }
 
+    // Bezpieczne wyjście z pętli w przypadku braku dalszych tokenów do przetworzenia
     break;
   }
 
@@ -230,12 +239,7 @@ function findDictionaryFirstInventoryEntryAt_(tokens, startPosition, context) {
   const quantityUnitConsumed = number && isQuantityUnitWord_(
     tokens[numberPosition + number.consumed]
   ) ? 1 : 0;
-  // Nie zatwierdzamy krótszej nazwy bez wartości, jeżeli po niej pozostaje
-  // dalsza część wpisu. Przykład krytyczny:
-  //   magazyn Inne beczki Pilsner 2
-  // Katalog może zawierać także krótszą pozycję „Inne Beczki”. Wcześniej
-  // parser emitował ją jako błąd, a „Pilsner 2” przypisywał do innego
-  // pilsnera. Cały fragment musi przejść przez bezpieczną ocenę granicy.
+
   if (!number && numberPosition < tokens.length) {
     return null;
   }
@@ -283,8 +287,6 @@ function findLongestExactCatalogSpanAt_(tokens, startPosition, context) {
   const nextAfterTrie = best ? normalizeWordForParser_(tokens[best.endPosition] || '') : '';
   if (best && !['zero', 'pol'].includes(nextAfterTrie)) return best;
 
-  // Zachowujemy kompatybilny fallback dla transformacji technicznych,
-  // których nie da się przejść token po tokenie w surowym tekście.
   const phraseIndex = getParserPhraseIndex_(runtime);
   best = null;
 
@@ -298,8 +300,6 @@ function findLongestExactCatalogSpanAt_(tokens, startPosition, context) {
     for (let variantIndex = 0; variantIndex < variants.length; variantIndex++) {
       const key = canonicalParserPhrase_(variants[variantIndex]);
       const products = phraseIndex[key] || [];
-      // Kolizja dokładnego klucza nie może być rozstrzygana kolejnością
-      // produktów w arkuszu. Przekazujemy ją do późniejszego matchera.
       if (products.length !== 1) continue;
       const product = products[0];
       best = {
@@ -351,10 +351,6 @@ function getParserPhraseIndex_(context) {
 
 function addParserPhraseVariants_(index, value, product) {
   const rawVariants = [String(value || '')];
-  // Do indeksu EXACT nie wolno dodawać wariantów technicznych usuwających
-  // słowa (np. "years old"). Takie warianty są dopuszczalne wyłącznie w
-  // późniejszym, ocenianym matcherze. Inaczej "Osco 2" staje się fałszywie
-  // pełną nazwą "Osco 2 years old".
   buildParserRecognitionVariants_(value).forEach(key => rawVariants.push(key));
 
   rawVariants.forEach(variant => {
@@ -392,9 +388,6 @@ function stripParserPackagingSuffix_(canonical) {
 
 /**
  * Szuka najlepszego podzialu: NAZWA PRODUKTU | WARTOSC.
- * Liczba moze nalezec do nazwy (Bacardi 8, Auchentoshan 12yo),
- * dlatego sprawdzamy wszystkie sensowne granice, zamiast konczyc
- * nazwe na pierwszej liczbie.
  */
 function findBestInventoryEntryAt_(tokens, startPosition, context) {
   const maxNameTokens = 10;
@@ -415,9 +408,6 @@ function findBestInventoryEntryAt_(tokens, startPosition, context) {
       continue;
     }
 
-    // v2.9.2: slowo 'zero' / zapis '0%' moze byc czescia nazwy
-    // produktu. Nie wolno konczyc nazwy w tym miejscu, jezeli dluzszy
-    // fragment jest poprawnym, zakotwiczonym dopasowaniem katalogowym.
     if (
       isProtectedZeroNameToken_(tokens, startPosition, numberPosition, context) ||
       isProtectedCatalogNumericNameToken_(tokens, startPosition, numberPosition, context) ||
@@ -442,10 +432,6 @@ function findBestInventoryEntryAt_(tokens, startPosition, context) {
     const parserMatch = matchProductForParser_(recognitionInput, context);
     const match = parserMatch.match;
 
-    // Krytyczna zasada: dopasowanie musi zaczynac sie dokladnie
-    // w miejscu, w ktorym parser aktualnie stoi. Matcher nie moze
-    // pominac poczatku wpisu i wybrac produktu znajdujacego sie
-    // dopiero pozniej w analizowanym fragmencie.
     if (!isParserMatchAnchoredAtStart_(recognitionInput, match)) {
       continue;
     }
@@ -482,8 +468,6 @@ function findBestInventoryEntryAt_(tokens, startPosition, context) {
     if (b.score !== a.score) {
       return b.score - a.score;
     }
-
-    // Przy remisie wybieramy dluzsza rozpoznana nazwe.
     return b.nextPosition - a.nextPosition;
   });
 
@@ -491,15 +475,6 @@ function findBestInventoryEntryAt_(tokens, startPosition, context) {
 }
 
 
-/**
- * Zabezpiecza granice pozycji.
- *
- * Dla fragmentu:
- *   Jameson 12 Auchentoshan 12 1,234
- * matcher moze uznac, ze najlepszym produktem jest Auchentoshan 12.
- * Parser nie moze jednak zaakceptowac takiego wyniku, bo nazwa produktu
- * nie zaczyna sie od pierwszego tokenu analizowanego fragmentu.
- */
 function isParserMatchAnchoredAtStart_(inputName, match) {
   if (!match || ['NOT_FOUND', 'EMPTY'].includes(match.status)) {
     return false;
@@ -542,10 +517,6 @@ function isParserMatchAnchoredAtStart_(inputName, match) {
     );
     if (exactAnchor) return true;
 
-    // Drobna literówka na początku nazwy nie może wyłączyć poprawnego
-    // dopasowania SMART. Nadal wymagamy bardzo wysokiego wyniku, zgodnych
-    // cyfr i podobnego pierwszego tokenu, więc matcher nie może przeskoczyć
-    // do produktu występującego dopiero dalej w tekście.
     const scored = scoreRecognitionCandidate_(inputName, product);
     const inputFirst = normalizeRecognitionForScore_(inputName).split(' ')[0] || '';
     const targetFirst = normalizeRecognitionForScore_(product.name).split(' ')[0] || '';
@@ -629,13 +600,6 @@ function findFirstNumberBoundary_(tokens, startPosition, context) {
   return null;
 }
 
-
-
-/**
- * v2.10.3 — obsługa wpisów, w których wartość występuje przed nazwą,
- * np. "1.407 ardbeg 10". Akceptujemy wyłącznie zakotwiczone dopasowanie
- * katalogowe, dzięki czemu liczba nie połyka przypadkowego tekstu.
- */
 function findLeadingValueInventoryEntryAt_(tokens, startPosition, context) {
   const number = readNumberAt_(tokens, startPosition);
   if (!number) return null;
@@ -681,12 +645,6 @@ function findLeadingValueInventoryEntryAt_(tokens, startPosition, context) {
   return candidates[0];
 }
 
-/**
- * Chroni liczby będące częścią istniejącej nazwy/aliasu produktu,
- * np. Bacardi 8, Ardbeg 10, Singleton 15, Auchentoshan 18, Zacapa 23.
- * Liczba jest chroniona tylko wtedy, gdy dłuższy fragment rzeczywiście
- * pasuje do katalogu. Dzięki temu "campari 18" nadal oznacza stan 18.
- */
 function isProtectedCatalogNumericNameToken_(tokens, startPosition, numberPosition, context) {
   const number = readNumberAt_(tokens, numberPosition);
   if (!number || number.consumed !== 1) return false;
@@ -699,8 +657,6 @@ function isProtectedCatalogNumericNameToken_(tokens, startPosition, numberPositi
     return true;
   }
 
-  // Musi istnieć kolejny token, który może być właściwą wartością.
-  // Bez niego przypadek pozostaje standardową nazwą + stanem.
   if (!readNumberAt_(tokens, numberPosition + 1)) return false;
 
   const longerName = cleanProductName_(
@@ -716,10 +672,6 @@ function isProtectedCatalogNumericNameToken_(tokens, startPosition, numberPositi
     !['NOT_FOUND', 'EMPTY'].includes(String(parserMatch.match && parserMatch.match.status || ''));
 }
 
-/**
- * Chroni słowne pojemności: "pół litra", "półlitrowa". Samo słowo
- * "pół" nadal może być wartością 0.5, gdy nie tworzy nazwy produktu.
- */
 function isProtectedVolumePhraseToken_(tokens, startPosition, numberPosition, context) {
   const normalized = normalizeWordForParser_(tokens[numberPosition] || '');
   if (normalized !== 'pol') return false;
@@ -746,11 +698,6 @@ function isProtectedVolumePhraseToken_(tokens, startPosition, numberPosition, co
     !['NOT_FOUND', 'EMPTY'].includes(String(parserMatch.match && parserMatch.match.status || ''));
 }
 
-/**
- * Chroni warianty produktów zawierające zero/0% przed potraktowaniem
- * ich jako ilości. Zwykłe cyfrowe 0 pozostaje wartością, chyba że po nim
- * występuje kolejna liczba i cały dłuższy fragment pasuje do produktu.
- */
 function isProtectedZeroNameToken_(tokens, startPosition, numberPosition, context) {
   const raw = String(tokens[numberPosition] || '').toLowerCase().replace(/[,:;]+$/g, '');
   const normalized = normalizeWordForParser_(raw);
@@ -761,9 +708,6 @@ function isProtectedZeroNameToken_(tokens, startPosition, numberPosition, contex
 
   if (!textualZero && !numericZeroWithFollowingValue) return false;
 
-  // v2.10.2: gdy po slowie "zero" wystepuje kolejna liczba, zero jest
-  // elementem nazwy, a kolejna liczba jest wartoscia pozycji.
-  // Przyklady: "kola zero 1", "lucano zero 2", "tanqueray 0% 3".
   if (textualZero && followingNumber) return true;
 
   const longerName = cleanProductName_(
@@ -777,15 +721,6 @@ function isProtectedZeroNameToken_(tokens, startPosition, numberPosition, contex
     !['NOT_FOUND', 'EMPTY'].includes(match.status);
 }
 
-
-/**
- * v2.10.1 — dopasowanie nazw zawierajacych "zero" przed ekstrakcja wartosci.
- * Nie zmienia tekstu uzytkownika. Tworzy jedynie warianty rozpoznawcze:
- *   lucano zero -> lucano 0
- *   kola zero / cola zero -> kola bez cukru / cola bez cukru
- * Ostatecznie wybiera najlepsze zakotwiczone dopasowanie katalogowe.
- */
-
 function buildParserRecognitionVariants_(value) {
   const source = normalizeRecognitionInput_(value);
   const variants = [source];
@@ -797,26 +732,20 @@ function buildParserRecognitionVariants_(value) {
     variants.push(source.replace(/\bzero\b/gi, 'bez cukru'));
   }
 
-  // "kola 0 12": 0 jest wariantem nazwy, 12 jest wartoscia.
-  // "fritz kola 0" pozostaje zwykla kola ze stanem zero.
   if (/^(?:kola|cola)\s+0$/i.test(source)) {
     variants.unshift(source.replace(/\b0\b/g, 'bez cukru'));
     variants.unshift('fritz 200ml ' + source.replace(/\b0\b/g, 'bez cukru'));
   }
 
-  // Najczestszy wariant dyktowania softow: "kola zero" / "cola zero".
   if (/\b(?:kola|cola)\s+zero\b/i.test(source)) {
     variants.unshift(source.replace(/\bzero\b/gi, 'bez cukru'));
     variants.unshift('fritz 200ml ' + source.replace(/\bzero\b/gi, 'bez cukru'));
   }
 
-  // Lucano Zero wystepuje w katalogu jako Amaro Lucano 0% 0,7L.
   if (/\blucano\s+zero\b/i.test(source) && !/\bamaro\b/i.test(source)) {
     variants.unshift('amaro ' + source.replace(/\bzero\b/gi, '0%'));
   }
 
-  // v2.10.3: słowne warianty pojemności są częścią nazwy produktu,
-  // a nie stanem magazynowym. ZERO pozostaje obsługiwane powyżej bez zmian.
   if (/\b(?:pol|pół)\s+(?:litra|litr|litrowa|litrowy|l)\b/i.test(source)) {
     variants.unshift(source.replace(/\b(?:pol|pół)\s+(?:litra|litr|litrowa|litrowy|l)\b/gi, '0,5l'));
     variants.unshift(source.replace(/\b(?:pol|pół)\s+(?:litra|litr|litrowa|litrowy|l)\b/gi, '500ml'));
@@ -915,10 +844,6 @@ function isConnectorWord_(value) {
   ].includes(value);
 }
 
-/**
- * Jednostka wypowiadana po liczbie nie jest początkiem kolejnego produktu.
- * Obsługujemy najczęstsze formy z polskich transkrypcji głosowych.
- */
 function isQuantityUnitWord_(value) {
   return [
     'szt',
@@ -944,7 +869,6 @@ function readLocationAt_(tokens, position) {
         .slice(position, position + consumed)
         .filter(token => token !== null && token !== undefined && String(token).trim() !== '');
 
-      // Nie wolno uznać jednoelementowego końca wiersza za dwuwyrazowy alias.
       if (phraseTokens.length !== consumed) return;
       const phrase = normalizeWordForParser_(phraseTokens.join(' '));
       if (phrase !== normalized) return;
@@ -1134,11 +1058,8 @@ function createParserResult_(
   };
 }
 
-
 /**
  * Inventory PRO 2.10.5 — wbudowany matcher parsera.
- * Trzymany w Parser.gs, aby częściowa aktualizacja projektu nie mogła
- * pozostawić parsera bez wymaganej funkcji globalnej.
  */
 function matchProductForParser_(recognitionInput, context) {
   const variants = buildParserRecognitionVariants_(recognitionInput);
