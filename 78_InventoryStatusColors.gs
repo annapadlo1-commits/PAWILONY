@@ -64,7 +64,10 @@ function clearInventoryStatusColors_(sheet) {
     .filter(Boolean)
     .map(function(row) { return 'A' + row; });
   if (cells.length) {
-    inventory.getRangeList(cells).setBackground(null).setFontColor(null);
+    inventory.getRangeList(cells)
+      .setBackground('#ffffff')
+      .setFontColor('#000000');
+    SpreadsheetApp.flush();
   }
   return {cleared: cells.length};
 }

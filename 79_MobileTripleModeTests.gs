@@ -113,6 +113,19 @@ function testInventoryFinishClearsConfiguredInputs515_() {
   );
 }
 
+function testInventoryColorLiveRefresh516_() {
+  const source = String(clearInventoryStatusColors_);
+  assertCondition_(
+    source.indexOf("setBackground('#ffffff')") >= 0 &&
+      source.indexOf("setFontColor('#000000')") >= 0,
+    'Reset kolorów musi ustawiać jawne formatowanie bazowe.'
+  );
+  assertCondition_(
+    source.indexOf('SpreadsheetApp.flush()') >= 0,
+    'Reset kolorów musi wymusić odświeżenie otwartego arkusza.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

@@ -79,6 +79,7 @@ function runEnterpriseTestsSilently_() {
     testAudioPipelineRecovery514_,
     testInventoryStatusColorLifecycle514_,
     testInventoryFinishClearsConfiguredInputs515_,
+    testInventoryColorLiveRefresh516_,
     testQuickInventoryRejectsEmptyList500_,
     testGeminiTransientRetry500_,
     testGeminiCompressedAudio510_,
