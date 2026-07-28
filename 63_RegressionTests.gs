@@ -61,6 +61,7 @@ function runAllEnterpriseTests() {
     testMobileImportReceipt530_,
     testProductManagerBulkArchive540_,
     testUnknownTareGrossApproval543_,
+    testReportingCategoryFallback544_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,

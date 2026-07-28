@@ -279,6 +279,21 @@ function testUnknownTareGrossApproval543_() {
   );
 }
 
+function testReportingCategoryFallback544_() {
+  assertCondition_(
+    resolveReportingCategory_('', 'WHISKY') === normalizeBusinessCategory_('WHISKY'),
+    'Raport musi użyć zweryfikowanej kategorii SŁOWNIKA, gdy po zmianie wierszy nie odczyta nagłówka sekcji.'
+  );
+  assertCondition_(
+    resolveReportingCategory_('GIN', 'WHISKY') === normalizeBusinessCategory_('GIN'),
+    'Fizyczna kategoria arkusza musi pozostać źródłem pierwszego wyboru.'
+  );
+  assertCondition_(
+    String(generateInventoryReport_).indexOf('Raport nie odczytał żadnego produktu') >= 0,
+    'Raport nie może zwrócić cichego wyniku 0 przy niepustym katalogu.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

@@ -53,10 +53,20 @@ function generateInventoryReport_(sourceSheetName) {
       return;
     }
 
-    const physicalCategory = categoryByRow[row] || '';
+    const detectedCategory = categoryByRow[row] || '';
+    const configuredCategory = normalizeBusinessCategory_(product.category);
+    const physicalCategory = resolveReportingCategory_(detectedCategory, configuredCategory);
     if (!physicalCategory) {
       validationIssues.push(createReportIssue_('ERROR', product.name, 'Nie znaleziono fizycznej kategorii w arkuszu źródłowym.'));
       return;
+    }
+    if (!detectedCategory && configuredCategory) {
+      validationIssues.push(createReportIssue_(
+        'WARNING',
+        product.name,
+        'Nie odczytano nagłówka sekcji przy wierszu ' + row +
+          '. Raport użył zweryfikowanej kategorii ze SŁOWNIKA: „' + configuredCategory + '”.'
+      ));
     }
 
     const item = readInventorySummaryItemFromMatrix_(values, product, physicalCategory);
@@ -107,6 +117,18 @@ function generateInventoryReport_(sourceSheetName) {
     items.push(item);
   });
 
+  if (!items.length && catalog.length) {
+    throw new Error(
+      'Raport nie odczytał żadnego produktu z ' + catalog.length +
+      ' aktywnych pozycji katalogu. Eksport został zablokowany. ' +
+      (validationIssues.length
+        ? validationIssues.slice(0, 3).map(issue =>
+            (issue.product ? issue.product + ' — ' : '') + issue.message
+          ).join('; ')
+        : 'Sprawdź mapowanie wierszy i kategorii INWENTURA.')
+    );
+  }
+
   const report = createInventoryReportModel_({
     sourceSheetName: sheetName,
     generatedAt: new Date(),
@@ -118,6 +140,11 @@ function generateInventoryReport_(sourceSheetName) {
   report.summary = buildReportingSummary_(items);
   report.statistics = buildInventoryStatistics_(items);
   return report;
+}
+
+function resolveReportingCategory_(detectedCategory, configuredCategory) {
+  return normalizeBusinessCategory_(detectedCategory) ||
+    normalizeBusinessCategory_(configuredCategory) || '';
 }
 
 function readInventorySummaryItemFromMatrix_(values, product, category) {
