@@ -4,15 +4,19 @@
 /** Produkty skonfigurowane jako bezpośredni stan końcowy (bez formuł). */
 function isDirectFinalInventoryProduct_(product) {
   const name = normalizeText(product && product.name || product && product.product || '');
+  const row = Number(product && product.inventoryRow) || 0;
   return getDirectFinalProductDefinitions_().some(definition =>
-    getDirectFinalProductNames_(definition).indexOf(name) >= 0
+    getDirectFinalProductNames_(definition).indexOf(name) >= 0 ||
+      (row > 0 && row === Number(definition && definition.inventoryRow))
   );
 }
 
 function getDirectFinalInventoryColumn_(product) {
   const name = normalizeText(product && product.name || product && product.product || '');
+  const row = Number(product && product.inventoryRow) || 0;
   const definition = getDirectFinalProductDefinitions_().find(item =>
-    getDirectFinalProductNames_(item).indexOf(name) >= 0
+    getDirectFinalProductNames_(item).indexOf(name) >= 0 ||
+      (row > 0 && row === Number(item && item.inventoryRow))
   );
   return normalizeColumnLetter_(definition && definition.column || '');
 }

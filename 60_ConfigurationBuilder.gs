@@ -192,7 +192,10 @@ function scanInventoryProductsWithDiagnostics_() {
     const effectiveType = inferInventoryProductType_(
       currentType, currentCategory, productName, rowValues
     );
-    const directFinalColumn = getDirectFinalInventoryColumn_({ name: productName });
+    const directFinalColumn = getDirectFinalInventoryColumn_({
+      name: productName,
+      inventoryRow: sheetRow
+    });
     const columns = directFinalColumn
       ? { quantity: directFinalColumn, weight: '', warehouse: '', darkroom: '', fridges: '' }
       : effectiveType === CONFIG.PRODUCT_TYPES.LOCATION
@@ -204,7 +207,7 @@ function scanInventoryProductsWithDiagnostics_() {
     const mapping = validateProductColumnMapping_(
       effectiveType,
       columns,
-      { name: productName, type: effectiveType }
+      { name: productName, type: effectiveType, inventoryRow: sheetRow }
     );
     if (!mapping.valid) {
       diagnostics.errors.push(
@@ -421,7 +424,11 @@ function ensureConfiguredDirectFinalAliases_(products) {
   const rows = [];
   definitions.forEach(definition => {
     const names = getDirectFinalProductNames_(definition);
-    const product = catalog.find(item => names.indexOf(normalizeText(item && item.name || '')) >= 0);
+    const product = catalog.find(item =>
+      names.indexOf(normalizeText(item && item.name || '')) >= 0 ||
+        (Number(definition.inventoryRow) > 0 &&
+          Number(item && item.inventoryRow) === Number(definition.inventoryRow))
+    );
     if (!product) return;
     names.forEach(alias => {
       if (!alias || existing[alias]) return;
