@@ -65,7 +65,7 @@ function getFinalReviewData(sourceSheetName) {
     diagnosticStage = 'dane dodatkowe';
     return {
       version: CONFIG.VERSION,
-      releaseSignature: 'FINAL_REPORT_VISIBLE_ERROR_547',
+      releaseSignature: 'FINAL_REPORT_DATA_CONTRACT_548',
       diagnostics: snapshot.diagnostics,
       sourceSheetName: selectedSheet,
       isCurrentInventory: isConfiguredSheetName_(selectedSheet, CONFIG.SHEETS.INVENTORY),
@@ -82,7 +82,7 @@ function getFinalReviewData(sourceSheetName) {
     };
   } catch (error) {
     throw new Error(
-      'RAPORT 5.4.7 — etap „' + diagnosticStage + '”: ' +
+      'RAPORT 5.4.8 — etap „' + diagnosticStage + '”: ' +
       (error && error.message ? error.message : String(error))
     );
   }
