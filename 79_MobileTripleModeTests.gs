@@ -274,6 +274,26 @@ function testUnknownTareGrossApproval543_() {
       batchApprovalSource.indexOf('UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_') >= 0,
     'Zatwierdzenie kategorii musi zapisać i przeliczyć wszystkie zatwierdzone wagi brutto.'
   );
+  const blankItem = {
+    reviewReason: 'MISSING_PRODUCT',
+    packaging: {mode: CONFIG.PACKAGING_MODES.TARE_UNKNOWN},
+    grossAsNetApproved: false,
+    details: {grossWeight: ''}
+  };
+  assertCondition_(
+    !canApproveUnknownTareGrossAsNetInReview_(blankItem),
+    'Pominięty produkt bez wagi nie może trafić do zatwierdzania wagi brutto.'
+  );
+  const enteredItem = {
+    reviewReason: 'PACKAGING_DATA_MISSING',
+    packaging: {mode: CONFIG.PACKAGING_MODES.TARE_UNKNOWN},
+    grossAsNetApproved: false,
+    details: {grossWeight: 1.23}
+  };
+  assertCondition_(
+    canApproveUnknownTareGrossAsNetInReview_(enteredItem),
+    'Produkt z wpisaną wagą i nieznaną tarą musi pozwalać na zatwierdzenie brutto.'
+  );
   assertCondition_(
     reportSource.indexOf('buildReportingCatalog_') >= 0 &&
       reportSource.indexOf('Katalog raportowy jest pusty') >= 0,

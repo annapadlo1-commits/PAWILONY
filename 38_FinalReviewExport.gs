@@ -191,7 +191,10 @@ function approveUnknownTareGrossAsNetBatch(productKeys, sourceSheetName) {
       }
       const layout = getConfiguredInventoryLayout_(product.type);
       const gross = sheet.getRange(layout.grossWeight + product.inventoryRow).getValue();
-      if (gross === '' || !Number.isFinite(Number(gross)) || Number(gross) < 0) {
+      if (gross === '') {
+        return;
+      }
+      if (!Number.isFinite(Number(gross)) || Number(gross) < 0) {
         throw new Error('Produkt „' + product.name + '” nie ma prawidłowej wagi brutto.');
       }
       state.products[key] = true;

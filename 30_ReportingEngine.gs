@@ -373,15 +373,25 @@ function buildFinalReviewCategoryGroups_(items) {
       reason: item.reviewReason,
       finalTotal: item.finalTotal,
       unit: item.unit,
-      canApproveGrossAsNet: Boolean(
-        item.packaging &&
-        item.packaging.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN &&
-        !item.grossAsNetApproved
-      )
+      canApproveGrossAsNet: canApproveUnknownTareGrossAsNetInReview_(item)
     });
   });
   return Object.keys(groups).sort((a, b) => a.localeCompare(b, 'pl'))
     .map(category => groups[category]);
+}
+
+function canApproveUnknownTareGrossAsNetInReview_(item) {
+  const gross = item && item.details ? item.details.grossWeight : '';
+  return Boolean(
+    item &&
+    item.reviewReason === 'PACKAGING_DATA_MISSING' &&
+    item.packaging &&
+    item.packaging.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN &&
+    !item.grossAsNetApproved &&
+    gross !== '' &&
+    Number.isFinite(Number(gross)) &&
+    Number(gross) >= 0
+  );
 }
 
 function buildReportingSummary_(items) {
