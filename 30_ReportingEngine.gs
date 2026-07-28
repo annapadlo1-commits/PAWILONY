@@ -25,15 +25,13 @@ function generateInventoryReport_(sourceSheetName) {
   const values = sheet.getRange(1, 1, lastRow, lastColumn).getValues();
   const displayValues = sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
   const categoryByRow = buildStrictInventoryCategoryMapFromSheet_(sheet, displayValues);
-  let catalog = buildProductCatalog();
+  SpreadsheetApp.flush();
+  invalidateProductCatalogCache_();
+  const catalog = buildProductCatalogUncached_();
   if (!catalog.length) {
-    invalidateProductCatalogCache_();
-    catalog = buildProductCatalogUncached_();
-  }
-  if (!catalog.length && scanInventoryProducts_().length) {
     throw new Error(
-      'Katalog raportowy jest pusty mimo obecności produktów w INWENTURZE. ' +
-      'Odśwież konfigurację SŁOWNIKA przed eksportem.'
+      'Katalog raportowy jest pusty. Eksport został bezpiecznie zablokowany. ' +
+      'Odśwież konfigurację SŁOWNIKA i uruchom Health Check.'
     );
   }
   const settings = loadQualitySettings_();
@@ -182,6 +180,7 @@ function readInventorySummaryItemFromMatrix_(values, product, category) {
     addSummaryCellAddress_(item.cells, 'grossWeight', layout.grossWeight, row);
     addSummaryCellAddress_(item.cells, 'fullUnits', layout.fullUnits, row);
     item.packaging = getProductPackagingProfile_(product);
+    item.grossAsNetApproved = isUnknownTareGrossApproved_(product);
     applyPackagingAwareReportingValues_(item);
   }
 
@@ -213,10 +212,9 @@ function applyPackagingAwareReportingValues_(item) {
   let openNet = Number(details.openNet);
   if (profile && profile.mode === CONFIG.PACKAGING_MODES.GROSS_REFERENCE) {
     openNet = calculateReferenceRemainingQuantity_(details.grossWeight, profile);
-  } else if (
-    profile && profile.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN ||
-    details.emptyContainerWeight === ''
-  ) {
+  } else if (profile && profile.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN) {
+    openNet = item.grossAsNetApproved ? Number(details.grossWeight) : 0;
+  } else if (details.emptyContainerWeight === '') {
     openNet = 0;
   } else {
     const gross = Number(details.grossWeight);
@@ -283,7 +281,7 @@ function classifyFinalReviewRequirement_(item) {
   if (grossMissing && !unitsProvided && !prepProvided) return 'MISSING_PRODUCT';
   const profile = item.packaging || {};
   if (!grossMissing && (
-    profile.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN ||
+    profile.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN && !item.grossAsNetApproved ||
     profile.mode === CONFIG.PACKAGING_MODES.TARE_KNOWN && details.emptyContainerWeight === ''
   )) return 'PACKAGING_DATA_MISSING';
   if (

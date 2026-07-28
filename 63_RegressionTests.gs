@@ -60,6 +60,7 @@ function runAllEnterpriseTests() {
     testDirectFinalAliases530_,
     testMobileImportReceipt530_,
     testProductManagerBulkArchive540_,
+    testUnknownTareGrossApproval543_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,

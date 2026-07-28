@@ -8,6 +8,38 @@ const PRODUCT_PACKAGING_HEADERS_ = [
   'PRZELICZNIK MASY', 'DATA REFERENCJI', 'AKTUALIZACJA', 'UŻYTKOWNIK'
 ];
 let PRODUCT_PACKAGING_RUNTIME_CACHE_ = null;
+const UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_ = 'INVENTORY_UNKNOWN_TARE_GROSS_APPROVALS';
+
+function loadUnknownTareGrossApprovals_() {
+  const session = ensureActiveInventorySession_();
+  const properties = PropertiesService.getDocumentProperties();
+  let stored = {};
+  try { stored = JSON.parse(properties.getProperty(UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_) || '{}'); }
+  catch (error) { stored = {}; }
+  return stored.sessionId === session.id && stored.products
+    ? stored
+    : {sessionId: session.id, products: {}};
+}
+
+function isUnknownTareGrossApproved_(product) {
+  const key = normalizeText(product && product.name);
+  return Boolean(key && loadUnknownTareGrossApprovals_().products[key]);
+}
+
+function saveUnknownTareGrossApproval_(product, approved) {
+  const state = loadUnknownTareGrossApprovals_();
+  const key = normalizeText(product && product.name);
+  if (!key) throw new Error('Brak produktu dla decyzji o tarze.');
+  if (approved) state.products[key] = true;
+  else delete state.products[key];
+  PropertiesService.getDocumentProperties().setProperty(
+    UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_, JSON.stringify(state)
+  );
+}
+
+function clearUnknownTareGrossApprovals_() {
+  PropertiesService.getDocumentProperties().deleteProperty(UNKNOWN_TARE_GROSS_APPROVAL_PROPERTY_);
+}
 
 function getProductPackagingSheet_(createIfMissing) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -223,6 +255,13 @@ function buildPackagingAwareOpenNetFormulaSpec_(product, layout, row, targetColu
   const tareR1C1 = buildRelativeR1C1Reference_(targetNumber, inventoryColumnLetterToNumber_(layout.emptyContainerWeight));
 
   if (profile.mode === CONFIG.PACKAGING_MODES.TARE_UNKNOWN) {
+    if (isUnknownTareGrossApproved_(product)) {
+      return {
+        operation: 'GROSS_AS_NET_APPROVED',
+        formula: '=' + gross,
+        r1c1: '=' + grossR1C1
+      };
+    }
     return {
       operation: 'TARE_UNKNOWN',
       formula: '=0*(' + gross + '<>"")',

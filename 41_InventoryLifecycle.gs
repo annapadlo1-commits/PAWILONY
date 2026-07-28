@@ -48,6 +48,7 @@ function clearCurrentInventory() {
   }
 
   const result = clearCurrentInventoryData_(sheet);
+  clearUnknownTareGrossApprovals_();
   clearInventoryStatusColors_(sheet);
 
   logInfo(

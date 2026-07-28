@@ -138,6 +138,11 @@ function createNewProductFromImport(request) {
 
     SpreadsheetApp.flush();
     invalidateProductCatalogCache_();
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Dodano produkt „' + name + '” i odświeżono katalog.',
+      'Inventory PRO',
+      6
+    );
 
     const refreshed = buildRuntimeContext_();
     const product = refreshed.productIndex[normalizeText(name)];

@@ -70,6 +70,15 @@ function saveImportItems(items, clientImportId) {
 
     SpreadsheetApp.flush();
     const statusColors = refreshInventoryStatusColors_(sheet);
+    SpreadsheetApp.flush();
+    if (writePlan.length) {
+      sheet.getRange(writePlan[0].a1).getDisplayValue();
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Import zapisany — odświeżono ' + writePlan.length + ' pól.',
+        'Inventory PRO',
+        5
+      );
+    }
     appendImportHistory_(importId, results, sheet.getName());
 
     let learnedAliasesCount = 0;

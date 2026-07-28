@@ -252,6 +252,33 @@ function testProductManagerBulkArchive540_() {
   );
 }
 
+function testUnknownTareGrossApproval543_() {
+  const formulaSource = String(buildPackagingAwareOpenNetFormulaSpec_);
+  const approvalSource = String(approveUnknownTareGrossAsNet);
+  const reportSource = String(generateInventoryReport_);
+  assertCondition_(
+    formulaSource.indexOf('GROSS_AS_NET_APPROVED') >= 0 &&
+      formulaSource.indexOf('isUnknownTareGrossApproved_') >= 0,
+    'Zatwierdzona waga brutto musi otrzymać kontrolowaną formułę bieżącej inwentaryzacji.'
+  );
+  assertCondition_(
+    approvalSource.indexOf('TARE_UNKNOWN') >= 0 &&
+      approvalSource.indexOf('applyCanonicalFormulasToProductRow_') >= 0 &&
+      approvalSource.indexOf('getDocumentLock') >= 0,
+    'Decyzja o tarze musi walidować profil, blokować dokument i przeliczać formuły.'
+  );
+  assertCondition_(
+    reportSource.indexOf('buildProductCatalogUncached_') >= 0 &&
+      reportSource.indexOf('Katalog raportowy jest pusty') >= 0,
+    'Raport końcowy musi ominąć stary cache i blokować pusty eksport.'
+  );
+  assertCondition_(
+    String(startInventorySession_).indexOf('clearUnknownTareGrossApprovals_') >= 0 &&
+      String(clearCurrentInventory).indexOf('clearUnknownTareGrossApprovals_') >= 0,
+    'Decyzje o wadze brutto muszą być czyszczone wraz z cyklem inwentaryzacji.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

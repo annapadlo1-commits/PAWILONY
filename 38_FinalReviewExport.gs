@@ -79,6 +79,47 @@ function validateFinalReviewCategoryConfirmations_(items, confirmedCategories) {
   return required;
 }
 
+function approveUnknownTareGrossAsNet(productKey, sourceSheetName) {
+  const selectedSheet = resolveFinalReviewSheetName_(sourceSheetName);
+  if (!isConfiguredSheetName_(selectedSheet, CONFIG.SHEETS.INVENTORY)) {
+    throw new Error('Decyzję o wadze brutto można zapisać tylko dla bieżącej inwentaryzacji.');
+  }
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    SpreadsheetApp.flush();
+    invalidateProductCatalogCache_();
+    const catalog = buildProductCatalogUncached_();
+    const key = normalizeText(productKey);
+    const product = catalog.find(item =>
+      item.normalizedName === key || normalizeText(item.name) === key
+    );
+    if (!product || !product.inventoryRow) throw new Error('Nie znaleziono produktu w bieżącej inwentaryzacji.');
+    const profile = getProductPackagingProfile_(product);
+    if (!profile || profile.mode !== CONFIG.PACKAGING_MODES.TARE_UNKNOWN) {
+      throw new Error('Produkt nie ma profilu „tara nieznana”.');
+    }
+    const sheet = getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+    const layout = getConfiguredInventoryLayout_(product.type);
+    const gross = sheet.getRange(layout.grossWeight + product.inventoryRow).getValue();
+    if (gross === '' || !Number.isFinite(Number(gross)) || Number(gross) < 0) {
+      throw new Error('Najpierw wpisz prawidłową wagę brutto produktu.');
+    }
+    saveUnknownTareGrossApproval_(product, true);
+    applyCanonicalFormulasToProductRow_(sheet, product);
+    SpreadsheetApp.flush();
+    refreshInventoryStatusColors_(sheet);
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Zatwierdzono całą wagę brutto dla: ' + product.name,
+      'Inventory PRO',
+      6
+    );
+    return {success: true, product: product.name, grossWeight: Number(gross)};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function applyFinalReviewCorrections(corrections, sourceSheetName) {
   if (!Array.isArray(corrections) || !corrections.length) {
     return { success: true, updated: 0 };
@@ -665,6 +706,7 @@ function ensureActiveInventorySession_() {
 }
 
 function startInventorySession_() {
+  clearUnknownTareGrossApprovals_();
   const session = { id: createUniqueId_('SESSION'), startedAt: new Date().toISOString() };
   PropertiesService.getDocumentProperties().setProperty('INVENTORY_PRO_ACTIVE_SESSION', JSON.stringify(session));
   return session;
