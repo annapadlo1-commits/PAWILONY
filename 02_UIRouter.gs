@@ -10,6 +10,10 @@ function includeInventoryUiTheme_() {
   return HtmlService.createHtmlOutputFromFile('UI_Theme').getContent();
 }
 
+function includeInventoryJurekLoader_() {
+  return HtmlService.createHtmlOutputFromFile('UI_JurekLoader').getContent();
+}
+
 function includeInventoryHelp_() {
   return HtmlService.createHtmlOutputFromFile('UI_Help').getContent();
 }

@@ -3,6 +3,7 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <?!= includeInventoryJurekLoader_(); ?>
   <style>
     :root { --red:#8b1e3f; --gold:#f59e0b; --green:#217346; --ink:#251f21; --muted:#6d6367; --line:#ded8d4; --bg:#f7f5f3; }
     * { box-sizing:border-box; }
@@ -100,7 +101,7 @@
 <script>
 let model={aliases:[],products:[],summary:{}};
 function server(name,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));}
-async function loadData(){setMessage('Wczytywanie biblioteki aliasów…');try{const result=await server('getAliasManagerData');if(!result)throw new Error('Brak odpowiedzi serwera.');model=result;document.getElementById('version').textContent='v'+result.version;fillProducts();renderSummary();render();setMessage('Gotowe.');}catch(e){setMessage(errorText(e),true);}}
+async function loadData(){InventoryProLoader.createOverlay('aliasJurekLoading','Wczytuję bibliotekę aliasów…');setMessage('Wczytywanie biblioteki aliasów…');try{const result=await server('getAliasManagerData');if(!result)throw new Error('Brak odpowiedzi serwera.');model=result;document.getElementById('version').textContent='v'+result.version;fillProducts();renderSummary();render();setMessage('Gotowe.');}catch(e){setMessage(errorText(e),true);}finally{InventoryProLoader.hide('#aliasJurekLoading')}}
 function fillProducts(){const productFilter=document.getElementById('productFilter');const editor=document.getElementById('editProduct');const old=productFilter.value;productFilter.innerHTML='<option value="">Wszystkie produkty</option>';editor.innerHTML='';model.products.forEach(p=>{const opt=document.createElement('option');opt.value=p.name;opt.textContent=p.name+(p.active?'':' (nieaktywny)');productFilter.appendChild(opt);const opt2=opt.cloneNode(true);editor.appendChild(opt2);});productFilter.value=old;}
 function renderSummary(){const s=model.summary;document.getElementById('summary').innerHTML=`<span class="chip">Aliasy: ${s.aliases||0}</span><span class="chip">Unikalne: ${s.uniqueAliases||0}</span><span class="chip bad">Konflikty: ${s.conflicts||0}</span><span class="chip bad">Bez produktu: ${s.orphaned||0}</span><span class="chip">Puste miejsca: ${s.blankRows||0}</span>`;}
 function filtered(){const q=norm(document.getElementById('search').value);const status=document.getElementById('statusFilter').value;const product=document.getElementById('productFilter').value;return model.aliases.filter(a=>{if(q&&!norm(a.alias+' '+a.product).includes(q))return false;if(product&&a.product!==product)return false;if(status==='conflict'&&!a.conflict)return false;if(status==='orphan'&&a.productExists)return false;if(status==='inactive'&&(!a.productExists||a.productActive))return false;if(status==='ok'&&(a.conflict||!a.productExists||!a.productActive))return false;return true;});}

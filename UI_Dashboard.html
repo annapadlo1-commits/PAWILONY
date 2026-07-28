@@ -2,6 +2,7 @@
 <html>
 <head>
   <base target="_top">
+  <?!= includeInventoryJurekLoader_(); ?>
   <?!= includeInventoryUiTheme_(); ?>
   <?!= includeInventoryHelp_(); ?>
   <style>
@@ -36,7 +37,7 @@
   function activateView(id){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===id));document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));}
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>activateView(btn.dataset.view)));
   function init(){google.script.run.withSuccessHandler(sources=>{const select=document.getElementById('source');select.innerHTML=sources.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}${s.current?' — bieżąca':''}</option>`).join('');loadDashboard();}).withFailureHandler(showError).getInventoryDashboardSources();}
-  function loadDashboard(){document.getElementById('loading').style.display='flex';google.script.run.withSuccessHandler(render).withFailureHandler(showError).getInventoryDashboardData(document.getElementById('source').value);}
+  function loadDashboard(){InventoryProLoader.show('#loading','Buduję dashboard i podsumowanie…');google.script.run.withSuccessHandler(render).withFailureHandler(showError).getInventoryDashboardData(document.getElementById('source').value);}
   function render(data){dashboardData=data;document.getElementById('loading').style.display='none';document.getElementById('subtitle').textContent=`${data.sourceSheetName} • wersja ${data.version}`;document.getElementById('meta').textContent=`${data.durationMs} ms • ${new Date(data.generatedAt).toLocaleString('pl-PL')}`;
     const s=data.summary;const cards=[['Produkty',s.products,'w katalogu','categories'],['Uzupełnione',s.completed,`${s.completionPercent}%`,'categories'],['Brak wartości',s.missing,'kliknij, aby wyświetlić','missing'],['Ostrzeżenia',s.warningProducts,'kliknij, aby wyświetlić','warnings'],['Błędy walidacji',s.validationErrors,'kliknij, aby wyświetlić','errors'],['Jakość danych',`${s.qualityScore}%`,'kliknij, aby sprawdzić','quality']];document.getElementById('kpis').innerHTML=cards.map((c,i)=>`<button type="button" class="kpi clickable" onclick="showDashboardFilter('${c[3]}')"><div class="label">${c[0]}</div><div class="value ${i===4&&s.validationErrors?'bad':i===5&&s.qualityScore>=95?'good':''}">${c[1]}</div><div class="note">${c[2]}</div></button>`).join('');
     document.getElementById('types').innerHTML=data.typeStatistics.map(t=>`<div class="type-card"><h3>${esc(t.type)}</h3><div class="big">${t.completed}/${t.products}</div><div class="meta">${t.completionPercent}% uzupełniono • ${t.missing} braków</div><div class="progress" style="margin-top:10px"><span style="width:${t.completionPercent}%"></span></div></div>`).join('');

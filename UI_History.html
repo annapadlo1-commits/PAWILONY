@@ -3,6 +3,7 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <?!= includeInventoryJurekLoader_(); ?>
   <?!= includeInventoryUiTheme_(); ?>
   <?!= includeInventoryHelp_(); ?>
   <style>
@@ -20,7 +21,7 @@
   <script>
     let historyData={rows:[],types:[]};
     const els={type:document.getElementById('type'),search:document.getElementById('search'),summary:document.getElementById('summary'),rows:document.getElementById('rows'),loading:document.getElementById('loading')};
-    function load(){els.loading.style.display='flex';google.script.run.withSuccessHandler(setData).withFailureHandler(showError).getApplicationHistoryData();}
+    function load(){InventoryProLoader.show(els.loading,'Wczytuję historię zdarzeń…');google.script.run.withSuccessHandler(setData).withFailureHandler(showError).getApplicationHistoryData();}
     function setData(data){historyData=data||{rows:[],types:[]};els.type.innerHTML='<option value="">Wszystkie</option>'+historyData.types.map(value=>'<option value="'+esc(value)+'">'+esc(eventLabel(value))+'</option>').join('');els.loading.style.display='none';render();}
     function render(){const selected=els.type.value;const query=els.search.value.trim().toLowerCase();const filtered=historyData.rows.filter(row=>(!selected||row.type===selected)&&(!query||[row.description,row.id,row.user,row.source].join(' ').toLowerCase().includes(query)));els.summary.textContent='Wyświetlono '+filtered.length+' z '+historyData.rows.length+' zdarzeń';els.rows.innerHTML=filtered.length?filtered.map(row=>'<tr><td><b>'+esc(row.timestamp)+'</b><br><span class="muted">'+esc(row.user)+'</span></td><td><span class="event '+safeClass(row.type)+'">'+esc(eventLabel(row.type))+'</span></td><td>'+esc(row.description)+'</td><td>'+esc(row.itemsCount||'—')+'</td><td>'+esc(row.source||'—')+'</td><td class="links">'+link(row.xlsxUrl,'XLSX')+link(row.pdfUrl,'PDF')+(row.xlsxUrl||row.pdfUrl?'':'—')+'</td><td><b>'+esc(row.id||'—')+'</b><br><span class="muted">v'+esc(row.version||'—')+'</span></td></tr>').join(''):'<tr><td colspan="7"><div class="empty">Brak zdarzeń pasujących do filtrów.</div></td></tr>';}
     function eventLabel(value){return ({IMPORT:'Import',EXPORT:'Eksport',INVENTORY_STARTED:'Rozpoczęcie inwentaryzacji'})[value]||value||'Inne';}

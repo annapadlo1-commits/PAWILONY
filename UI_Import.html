@@ -2,6 +2,7 @@
 <html>
 <head>
   <base target="_top">
+  <?!= includeInventoryJurekLoader_(); ?>
   <?!= includeInventoryHelp_(); ?>
   <style>
     :root {
@@ -449,6 +450,11 @@
     }
 
     function setBusy(isBusy, message) {
+      if (isBusy) {
+        InventoryProLoader.createOverlay('importJurekLoading', message || 'Przetwarzam dane importu…');
+      } else {
+        InventoryProLoader.hide('#importJurekLoading');
+      }
       document.getElementById(
         'analyzeButton'
       ).disabled = isBusy;
