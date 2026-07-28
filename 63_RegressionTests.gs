@@ -58,6 +58,7 @@ function runAllEnterpriseTests() {
     testAudioParallelWorker521_,
     testDirectFinalAliases530_,
     testMobileImportReceipt530_,
+    testProductManagerBulkArchive540_,
     testGeminiTransientRetry500_,
     testClosedBusinessCategories284_,
     testPawilonyLayoutContract432_,

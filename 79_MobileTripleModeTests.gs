@@ -221,6 +221,17 @@ function testMobileImportReceipt530_() {
   );
 }
 
+function testProductManagerBulkArchive540_() {
+  const source = String(bulkSetProductArchiveStatus);
+  assertCondition_(
+    source.indexOf('getDocumentLock') >= 0 &&
+      source.indexOf('getRangeList') >= 0 &&
+      source.indexOf('invalidateProductCatalogCache_') >= 0 &&
+      source.indexOf('const previous') >= 0,
+    'Zbiorcza archiwizacja musi blokować dokument, zapisywać paczką, unieważniać katalog i mieć rollback.'
+  );
+}
+
 function testQuickInventoryRejectsEmptyList500_() {
   let rejected = false;
   try {

@@ -270,6 +270,67 @@ function saveProductManagerChanges(payload) {
   );
 }
 
+function bulkSetProductArchiveStatus(productKeys, active) {
+  return runSafely_(
+    'ProductManager',
+    'bulkSetProductArchiveStatus',
+    function() {
+      const requested = Array.from(new Set((Array.isArray(productKeys) ? productKeys : [])
+        .map(normalizeText)
+        .filter(Boolean)));
+      if (!requested.length) throw new Error('Nie zaznaczono żadnych produktów.');
+      if (requested.length > 1000) throw new Error('Jednorazowo można zmienić maksymalnie 1000 produktów.');
+
+      const lock = LockService.getDocumentLock();
+      lock.waitLock(30000);
+      try {
+        const sheet = getDictionarySheet_();
+        const configurations = loadAllProductConfigurationsForManager_();
+        const index = {};
+        configurations.forEach(function(product) { index[product.normalizedName] = product; });
+        const missing = requested.filter(function(key) { return !index[key]; });
+        if (missing.length) {
+          throw new Error('Nie znaleziono ' + missing.length + ' zaznaczonych produktów. Odśwież Product Manager.');
+        }
+
+        const targetState = Boolean(active);
+        const changed = requested.map(function(key) { return index[key]; })
+          .filter(function(product) { return Boolean(product.active) !== targetState; });
+        if (!changed.length) {
+          return { success: true, changed: 0, active: targetState };
+        }
+
+        const activeColumn = CONFIG.DICTIONARY.CONFIG_START_COLUMN +
+          CONFIG.DICTIONARY.CONFIG_COLUMN_COUNT - 1;
+        const cells = changed.map(function(product) {
+          return sheet.getRange(product.dictionaryRow, activeColumn).getA1Notation();
+        });
+        const previous = changed.map(function(product) { return product.active ? 'TAK' : 'NIE'; });
+        try {
+          sheet.getRangeList(cells).setValue(targetState ? 'TAK' : 'NIE');
+          SpreadsheetApp.flush();
+        } catch (error) {
+          cells.forEach(function(a1, index) {
+            try { sheet.getRange(a1).setValue(previous[index]); } catch (rollbackError) {}
+          });
+          SpreadsheetApp.flush();
+          throw error;
+        }
+
+        invalidateProductCatalogCache_();
+        logInfo('ProductManager', 'bulkSetProductArchiveStatus', 'Zmieniono status produktów', {
+          changed: changed.length,
+          active: targetState
+        });
+        return { success: true, changed: changed.length, active: targetState };
+      } finally {
+        lock.releaseLock();
+      }
+    },
+    'Nie udało się zbiorczo zmienić statusu produktów.'
+  );
+}
+
 function resolveProductManagerFallbackRow_(inventoryRows, normalizedName) {
   const row = Number((inventoryRows || {})[normalizedName]) || 0;
   return row > 0 ? row : null;
