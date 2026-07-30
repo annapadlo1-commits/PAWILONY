@@ -133,6 +133,53 @@ function testInventoryFinishClearsConfiguredInputs515_() {
   );
 }
 
+function testPackagingProfileFormulaLifecycle562_() {
+  const applySource = String(applyProductPackagingProfileToInventory_);
+  const clearSource = String(clearCurrentInventoryData_);
+  assertCondition_(
+    applySource.indexOf(
+      'applyCanonicalFormulasToProductRow_(sheet, product, profile)'
+    ) >= 0,
+    'Zmiana profilu opakowania musi przebudować formułę z jawnie zapisanym profilem.'
+  );
+  assertCondition_(
+    clearSource.indexOf('applyCanonicalFormulasToProductRow_') >= 0 &&
+      clearSource.indexOf('restoredFormulaCells') >= 0,
+    'Czyszczenie inwentury musi odtworzyć wszystkie kontraktowe formuły.'
+  );
+
+  const product = {
+    name: 'TEST BEZ TARY',
+    type: CONFIG.PRODUCT_TYPES.NORMAL,
+    inventoryRow: 3,
+    packaging: {mode: CONFIG.PACKAGING_MODES.TARE_UNKNOWN}
+  };
+  const layout = getConfiguredInventoryLayout_(CONFIG.PRODUCT_TYPES.NORMAL);
+  const known = buildPackagingAwareOpenNetFormulaSpec_(
+    product, layout, 3, layout.openNet,
+    {mode: CONFIG.PACKAGING_MODES.TARE_KNOWN, emptyWeight: 0.5}
+  );
+  const reference = buildPackagingAwareOpenNetFormulaSpec_(
+    product, layout, 3, layout.openNet,
+    {
+      mode: CONFIG.PACKAGING_MODES.GROSS_REFERENCE,
+      referenceGrossWeight: 1.2,
+      referenceNetQuantity: 0.7,
+      massConversionFactor: 1
+    }
+  );
+  assertCondition_(
+    known.operation === 'DIFFERENCE' &&
+      known.formula.indexOf(layout.emptyContainerWeight + '3') >= 0,
+    'Po podaniu tary formuła musi natychmiast uwzględniać kolumnę pustego opakowania.'
+  );
+  assertCondition_(
+    reference.operation === 'GROSS_REFERENCE' &&
+      reference.formula !== known.formula,
+    'Po wyborze punktu brutto formuła musi natychmiast przejść na tryb referencyjny.'
+  );
+}
+
 function testInventoryColorLiveRefresh516_() {
   const source = String(clearInventoryStatusColors_);
   assertCondition_(

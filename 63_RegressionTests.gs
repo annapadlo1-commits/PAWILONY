@@ -52,6 +52,7 @@ function runAllEnterpriseTests() {
     testAudioPipelineRecovery514_,
     testInventoryStatusColorLifecycle514_,
     testInventoryFinishClearsConfiguredInputs515_,
+    testPackagingProfileFormulaLifecycle562_,
     testInventoryColorLiveRefresh516_,
     testAudioScheduleIdempotency520_,
     testAudioStatusReadOnly520_,

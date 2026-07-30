@@ -361,8 +361,8 @@ function repairInventoryFormulas_(options) {
   }
 }
 
-function applyCanonicalFormulasToProductRow_(sheet, product) {
-  const contracts = getInventoryFormulaContract_(product);
+function applyCanonicalFormulasToProductRow_(sheet, product, packagingProfileOverride) {
+  const contracts = getInventoryFormulaContract_(product, packagingProfileOverride);
   contracts.forEach(contract => {
     sheet.getRange(product.inventoryRow, contract.columnNumber).setFormula(contract.formula);
   });

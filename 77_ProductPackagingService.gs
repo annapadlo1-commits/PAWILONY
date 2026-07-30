@@ -240,7 +240,9 @@ function applyProductPackagingProfileToInventory_(product, profile, options) {
     if (grossCell.getValue() === '') grossCell.setValue(profile.referenceGrossWeight);
   }
   invalidateProductPackagingCache_();
-  const formulas = applyCanonicalFormulasToProductRow_(sheet, product);
+  // Profil przekazujemy jawnie. Dzięki temu przebudowa formuły nie może użyć
+  // starego profilu osadzonego w obiekcie produktu ani wpisu ze starego cache.
+  const formulas = applyCanonicalFormulasToProductRow_(sheet, product, profile);
   SpreadsheetApp.flush();
   return {applied: true, formulas: formulas};
 }
@@ -253,8 +255,12 @@ function shouldSeedPackagingCurrentMeasurement_(options) {
   return settings.seedCurrentMeasurement === true;
 }
 
-function buildPackagingAwareOpenNetFormulaSpec_(product, layout, row, targetColumn) {
-  const profile = getProductPackagingProfile_(product) || {mode: CONFIG.PACKAGING_MODES.TARE_KNOWN};
+function buildPackagingAwareOpenNetFormulaSpec_(
+  product, layout, row, targetColumn, packagingProfileOverride
+) {
+  const profile = packagingProfileOverride ||
+    getProductPackagingProfile_(product) ||
+    {mode: CONFIG.PACKAGING_MODES.TARE_KNOWN};
   const targetNumber = inventoryColumnLetterToNumber_(targetColumn);
   const gross = layout.grossWeight + row;
   const tare = layout.emptyContainerWeight + row;
@@ -355,14 +361,24 @@ function migrateProductPackagingProfilesFromInventory() {
     }
     invalidateProductPackagingCache_();
     const inventory = scanInventoryProducts_();
+    const currentProfiles = loadProductPackagingProfiles_();
+    let repairedProducts = 0;
     inventory.forEach(product => {
       if (product.type !== CONFIG.PRODUCT_TYPES.LOCATION && !isDirectFinalInventoryProduct_(product)) {
-        applyCanonicalFormulasToProductRow_(sheet, product);
+        const currentProfile = currentProfiles[normalizeText(product.name)] ||
+          getProductPackagingProfile_(product);
+        applyProductPackagingProfileToInventory_(product, currentProfile);
+        repairedProducts++;
       }
     });
     const formats = normalizeInventoryNumberFormats_();
     SpreadsheetApp.flush();
-    return {success: true, createdProfiles: rows.length, formattedCells: formats.formattedCells};
+    return {
+      success: true,
+      createdProfiles: rows.length,
+      repairedProducts: repairedProducts,
+      formattedCells: formats.formattedCells
+    };
   } finally {
     lock.releaseLock();
   }
@@ -373,6 +389,7 @@ function migrateProductPackagingProfilesWithDialog() {
   SpreadsheetApp.getUi().alert(
     'Inventory PRO — profile opakowań',
     'Gotowe. Utworzone profile: ' + result.createdProfiles +
+      '. Naprawione produkty: ' + result.repairedProducts +
       '. Uporządkowane formaty liczb: ' + result.formattedCells + '.',
     SpreadsheetApp.getUi().ButtonSet.OK
   );

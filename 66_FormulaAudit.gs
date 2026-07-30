@@ -6,7 +6,7 @@
  * konfliktów, których nie wolno automatycznie nadpisywać.
  */
 
-function getInventoryFormulaContract_(product) {
+function getInventoryFormulaContract_(product, packagingProfileOverride) {
   if (isDirectFinalInventoryProduct_(product)) return [];
   const row = Number(product && product.inventoryRow) || 0;
   const type = String(product && product.type || '').trim().toUpperCase();
@@ -25,7 +25,7 @@ function getInventoryFormulaContract_(product) {
 
   if (type === CONFIG.PRODUCT_TYPES.KEG) {
     return validateInventoryFormulaContract_(product, layout, [
-      buildPackagingAwareFormulaContractEntry_(product, layout, row),
+      buildPackagingAwareFormulaContractEntry_(product, layout, row, packagingProfileOverride),
       buildInventoryFormulaContractEntry_(
         layout.fullUnitsVolume,
         'PRODUCT',
@@ -42,7 +42,7 @@ function getInventoryFormulaContract_(product) {
   }
 
   return validateInventoryFormulaContract_(product, layout, [
-    buildPackagingAwareFormulaContractEntry_(product, layout, row),
+    buildPackagingAwareFormulaContractEntry_(product, layout, row, packagingProfileOverride),
     buildInventoryFormulaContractEntry_(
       layout.fullUnitsVolume,
       'PRODUCT',
@@ -94,9 +94,11 @@ function validateInventoryFormulaContract_(product, layout, contracts) {
   return contracts;
 }
 
-function buildPackagingAwareFormulaContractEntry_(product, layout, row) {
+function buildPackagingAwareFormulaContractEntry_(product, layout, row, packagingProfileOverride) {
   const target = normalizeColumnLetter_(layout.openNet);
-  const spec = buildPackagingAwareOpenNetFormulaSpec_(product, layout, row, target);
+  const spec = buildPackagingAwareOpenNetFormulaSpec_(
+    product, layout, row, target, packagingProfileOverride
+  );
   return {
     column: target,
     columnNumber: inventoryColumnLetterToNumber_(target),
