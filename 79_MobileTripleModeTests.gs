@@ -166,14 +166,19 @@ function testPackagingProfileFormulaLifecycle562_() {
     .getContent();
   assertCondition_(
     managerRefreshSource.indexOf('getDisplayValues') >= 0 &&
-      managerRefreshSource.indexOf('setActiveSheet') >= 0 &&
-      managerRefreshSource.indexOf('.activate()') >= 0 &&
-      managerRefreshSource.indexOf('SpreadsheetApp.flush()') >= 0,
-    'Product Manager musi wymusić przeliczenie i odmalowanie zmienionego wiersza.'
+      managerRefreshSource.indexOf('SpreadsheetApp.flush()') >= 0 &&
+      managerRefreshSource.indexOf('sheetUrl:') >= 0 &&
+      managerRefreshSource.indexOf("'#gid='") >= 0 &&
+      managerRefreshSource.indexOf("'&range=A'") >= 0,
+    'Product Manager musi przeliczyć dane i zwrócić link przeładowujący zmieniony wiersz.'
   );
   assertCondition_(
-    managerUiSource.indexOf('refreshProductManagerInventoryView(r.productName)') >= 0,
-    'Frontend Product Managera musi uruchomić odświeżenie arkusza po zapisie.'
+    managerUiSource.indexOf('refreshProductManagerInventoryView(r.productName)') >= 0 &&
+      managerUiSource.indexOf('sheetRefreshConfirm') >= 0 &&
+      managerUiSource.indexOf('sheetRefreshLink') >= 0 &&
+      managerUiSource.indexOf('target="_top"') >= 0 &&
+      managerUiSource.indexOf('showSheetRefreshConfirm') >= 0,
+    'Frontend Product Managera musi dać pewne przeładowanie arkusza po zapisie.'
   );
 
   const product = {

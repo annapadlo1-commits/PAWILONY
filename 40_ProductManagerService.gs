@@ -302,7 +302,10 @@ function refreshProductManagerInventoryView(productName) {
         success: true,
         refreshed: true,
         inventoryRow: product.inventoryRow,
-        productName: product.name
+        productName: product.name,
+        sheetUrl: spreadsheet.getUrl() +
+          '#gid=' + sheet.getSheetId() +
+          '&range=A' + product.inventoryRow
       };
     },
     'Zmiany zapisano, ale nie udało się odświeżyć widoku arkusza.'
