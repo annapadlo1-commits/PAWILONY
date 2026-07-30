@@ -15,9 +15,16 @@ function saveImportItems(items, clientImportId) {
   let inventorySheet = null;
   let writePlan = [];
   let inventoryWritten = false;
+  let lockAcquired = false;
 
   try {
-    lock.waitLock(30000);
+    lockAcquired = lock.tryLock(10000);
+    if (!lockAcquired) {
+      throw new Error(
+        'Import jest chwilowo zajęty przez inną operację. Poczekaj na zakończenie ' +
+        'naprawy, raportu lub innego importu i spróbuj ponownie. Dane nie zostały utracone.'
+      );
+    }
     const receiptKey = getClientImportReceiptKey_(clientImportId);
     const existingReceipt = receiptKey
       ? PropertiesService.getScriptProperties().getProperty(receiptKey)
@@ -137,7 +144,7 @@ function saveImportItems(items, clientImportId) {
     logError('InventoryWriter', 'saveImportItems', error, { importId: importId }, Date.now() - startedAt);
     throw error;
   } finally {
-    lock.releaseLock();
+    if (lockAcquired) lock.releaseLock();
   }
 }
 

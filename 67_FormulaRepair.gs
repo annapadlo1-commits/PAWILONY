@@ -369,6 +369,51 @@ function applyCanonicalFormulasToProductRow_(sheet, product, packagingProfileOve
   return contracts.length;
 }
 
+/**
+ * Odtwarza formuły całego katalogu w kilku zapisach kolumnowych.
+ * Zachowuje nagłówki, sekcje i komórki niebędące fizycznymi produktami.
+ */
+function applyCanonicalFormulasToProductsBatch_(sheet, products, packagingProfiles) {
+  const inventory = sheet || getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+  if (!inventory) throw new Error('Nie znaleziono arkusza: ' + CONFIG.SHEETS.INVENTORY + '.');
+  const catalog = (products || []).filter(product => product && product.inventoryRow);
+  const profiles = packagingProfiles || {};
+  const byColumn = {};
+  let formulaCells = 0;
+
+  catalog.forEach(product => {
+    const profile = profiles[normalizeText(product.name)] || null;
+    getInventoryFormulaContract_(product, profile).forEach(contract => {
+      const column = normalizeColumnLetter_(contract.column);
+      if (!byColumn[column]) byColumn[column] = [];
+      byColumn[column].push({
+        row: Number(product.inventoryRow),
+        formula: contract.formula
+      });
+      formulaCells++;
+    });
+  });
+
+  const lastRow = inventory.getLastRow();
+  Object.keys(byColumn).forEach(column => {
+    const range = inventory.getRange(column + '1:' + column + lastRow);
+    const values = range.getValues();
+    const formulas = range.getFormulas();
+    const payload = values.map((row, index) => [
+      formulas[index][0] || row[0]
+    ]);
+    byColumn[column].forEach(change => {
+      payload[change.row - 1][0] = change.formula;
+    });
+    range.setValues(payload);
+  });
+
+  return {
+    formulaCells: formulaCells,
+    formulaColumns: Object.keys(byColumn).length
+  };
+}
+
 function verifyCanonicalFormulasForProductRow_(sheet, product) {
   return getInventoryFormulaContract_(product).map(contract => {
     const actual = sheet.getRange(product.inventoryRow, contract.columnNumber).getFormula();

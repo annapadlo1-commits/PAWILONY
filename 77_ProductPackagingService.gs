@@ -255,6 +255,59 @@ function shouldSeedPackagingCurrentMeasurement_(options) {
   return settings.seedCurrentMeasurement === true;
 }
 
+function applyProductPackagingProfilesToInventoryBatch_(sheet, products, profiles) {
+  const inventory = sheet || getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+  if (!inventory) throw new Error('Nie znaleziono arkusza: ' + CONFIG.SHEETS.INVENTORY + '.');
+  const profileMap = profiles || {};
+  const byTareColumn = {};
+  const catalog = (products || []).filter(product =>
+    product && product.inventoryRow &&
+    product.type !== CONFIG.PRODUCT_TYPES.LOCATION &&
+    !isDirectFinalInventoryProduct_(product)
+  );
+
+  catalog.forEach(product => {
+    const layout = getConfiguredInventoryLayout_(product.type);
+    const column = normalizeColumnLetter_(layout && layout.emptyContainerWeight);
+    const profile = profileMap[normalizeText(product.name)] ||
+      getProductPackagingProfile_(product);
+    if (!column || !profile) return;
+    if (!byTareColumn[column]) byTareColumn[column] = [];
+    byTareColumn[column].push({
+      row: Number(product.inventoryRow),
+      value: profile.mode === CONFIG.PACKAGING_MODES.TARE_KNOWN
+        ? profile.emptyWeight
+        : ''
+    });
+  });
+
+  const lastRow = inventory.getLastRow();
+  Object.keys(byTareColumn).forEach(column => {
+    const range = inventory.getRange(column + '1:' + column + lastRow);
+    const values = range.getValues();
+    const formulas = range.getFormulas();
+    const payload = values.map((row, index) => [
+      formulas[index][0] || row[0]
+    ]);
+    byTareColumn[column].forEach(change => {
+      payload[change.row - 1][0] = change.value;
+    });
+    range.setValues(payload);
+  });
+
+  const formulaResult = applyCanonicalFormulasToProductsBatch_(
+    inventory, catalog, profileMap
+  );
+  invalidateProductPackagingCache_();
+  SpreadsheetApp.flush();
+  return {
+    repairedProducts: catalog.length,
+    tareColumns: Object.keys(byTareColumn).length,
+    formulaCells: formulaResult.formulaCells,
+    formulaColumns: formulaResult.formulaColumns
+  };
+}
+
 function buildPackagingAwareOpenNetFormulaSpec_(
   product, layout, row, targetColumn, packagingProfileOverride
 ) {
@@ -362,21 +415,16 @@ function migrateProductPackagingProfilesFromInventory() {
     invalidateProductPackagingCache_();
     const inventory = scanInventoryProducts_();
     const currentProfiles = loadProductPackagingProfiles_();
-    let repairedProducts = 0;
-    inventory.forEach(product => {
-      if (product.type !== CONFIG.PRODUCT_TYPES.LOCATION && !isDirectFinalInventoryProduct_(product)) {
-        const currentProfile = currentProfiles[normalizeText(product.name)] ||
-          getProductPackagingProfile_(product);
-        applyProductPackagingProfileToInventory_(product, currentProfile);
-        repairedProducts++;
-      }
-    });
+    const repairResult = applyProductPackagingProfilesToInventoryBatch_(
+      sheet, inventory, currentProfiles
+    );
     const formats = normalizeInventoryNumberFormats_();
     SpreadsheetApp.flush();
     return {
       success: true,
       createdProfiles: rows.length,
-      repairedProducts: repairedProducts,
+      repairedProducts: repairResult.repairedProducts,
+      repairedFormulaCells: repairResult.formulaCells,
       formattedCells: formats.formattedCells
     };
   } finally {

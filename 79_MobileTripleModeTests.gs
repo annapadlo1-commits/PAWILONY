@@ -143,9 +143,22 @@ function testPackagingProfileFormulaLifecycle562_() {
     'Zmiana profilu opakowania musi przebudować formułę z jawnie zapisanym profilem.'
   );
   assertCondition_(
-    clearSource.indexOf('applyCanonicalFormulasToProductRow_') >= 0 &&
+    clearSource.indexOf('applyCanonicalFormulasToProductsBatch_') >= 0 &&
       clearSource.indexOf('restoredFormulaCells') >= 0,
     'Czyszczenie inwentury musi odtworzyć wszystkie kontraktowe formuły.'
+  );
+  const migrationSource = String(migrateProductPackagingProfilesFromInventory);
+  assertCondition_(
+    migrationSource.indexOf('applyProductPackagingProfilesToInventoryBatch_') >= 0 &&
+      migrationSource.indexOf('applyProductPackagingProfileToInventory_(') === -1,
+    'Migracja całego katalogu musi zapisywać profile i formuły paczkowo.'
+  );
+  const importSource = String(saveImportItems);
+  assertCondition_(
+    importSource.indexOf('tryLock(10000)') >= 0 &&
+      importSource.indexOf('lockAcquired') >= 0 &&
+      importSource.indexOf('Dane nie zostały utracone') >= 0,
+    'Import nie może wisieć na blokadzie i musi zwrócić bezpieczny komunikat.'
   );
 
   const product = {

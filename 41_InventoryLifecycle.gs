@@ -106,11 +106,7 @@ function clearCurrentInventoryData_(sheet) {
   // Formuły są częścią konstrukcji arkusza, nie danymi inwentaryzacji.
   // Odtwarzamy je po każdym czyszczeniu, również gdy zostały wcześniej
   // przypadkowo usunięte albo pochodziły ze starego trybu opakowania.
-  let restoredFormulaCells = 0;
-  products.forEach(product => {
-    if (!product.inventoryRow) return;
-    restoredFormulaCells += applyCanonicalFormulasToProductRow_(sheet, product);
-  });
+  const restoredFormulas = applyCanonicalFormulasToProductsBatch_(sheet, products);
 
   SpreadsheetApp.flush();
 
@@ -128,7 +124,7 @@ function clearCurrentInventoryData_(sheet) {
   return {
     clearedCells: prepared.length,
     clearedAddresses: prepared.map(item => item.a1),
-    restoredFormulaCells: restoredFormulaCells,
+    restoredFormulaCells: restoredFormulas.formulaCells,
     residualCells: []
   };
 }
