@@ -160,6 +160,21 @@ function testPackagingProfileFormulaLifecycle562_() {
       importSource.indexOf('Dane nie zostały utracone') >= 0,
     'Import nie może wisieć na blokadzie i musi zwrócić bezpieczny komunikat.'
   );
+  const managerRefreshSource = String(refreshProductManagerInventoryView);
+  const managerUiSource = HtmlService
+    .createHtmlOutputFromFile('UI_ProductManager')
+    .getContent();
+  assertCondition_(
+    managerRefreshSource.indexOf('getDisplayValues') >= 0 &&
+      managerRefreshSource.indexOf('setActiveSheet') >= 0 &&
+      managerRefreshSource.indexOf('.activate()') >= 0 &&
+      managerRefreshSource.indexOf('SpreadsheetApp.flush()') >= 0,
+    'Product Manager musi wymusić przeliczenie i odmalowanie zmienionego wiersza.'
+  );
+  assertCondition_(
+    managerUiSource.indexOf('refreshProductManagerInventoryView(r.productName)') >= 0,
+    'Frontend Product Managera musi uruchomić odświeżenie arkusza po zapisie.'
+  );
 
   const product = {
     name: 'TEST BEZ TARY',

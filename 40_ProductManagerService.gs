@@ -270,6 +270,45 @@ function saveProductManagerChanges(payload) {
   );
 }
 
+function refreshProductManagerInventoryView(productName) {
+  return runSafely_(
+    'ProductManager',
+    'refreshProductManagerInventoryView',
+    function() {
+      SpreadsheetApp.flush();
+      invalidateProductCatalogCache_();
+      const key = normalizeText(productName);
+      const product = buildProductCatalog().find(item => item.normalizedName === key);
+      if (!product || !product.inventoryRow) {
+        return {success: true, refreshed: false};
+      }
+
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = getSheetByConfiguredName_(CONFIG.SHEETS.INVENTORY);
+      if (!sheet) throw new Error('Nie znaleziono arkusza: ' + CONFIG.SHEETS.INVENTORY + '.');
+
+      // Odczyt po flush wymusza przeliczenie formuł, a aktywacja wiersza
+      // przekazuje otwartemu interfejsowi Sheets sygnał do odmalowania widoku.
+      sheet.getRange(product.inventoryRow, 1, 1, sheet.getLastColumn()).getDisplayValues();
+      spreadsheet.setActiveSheet(sheet);
+      sheet.getRange(product.inventoryRow, 1).activate();
+      SpreadsheetApp.flush();
+      spreadsheet.toast(
+        'Odświeżono produkt „' + product.name + '” w wierszu ' + product.inventoryRow + '.',
+        'Inventory PRO',
+        4
+      );
+      return {
+        success: true,
+        refreshed: true,
+        inventoryRow: product.inventoryRow,
+        productName: product.name
+      };
+    },
+    'Zmiany zapisano, ale nie udało się odświeżyć widoku arkusza.'
+  );
+}
+
 function bulkSetProductArchiveStatus(productKeys, active) {
   return runSafely_(
     'ProductManager',
